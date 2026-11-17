@@ -1,1 +1,1132 @@
-minsal
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Asistencia de Minsales</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* Ocultar barra de desplazamiento en contenedores horizontales manteniendo funcionalidad */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        /* Animación suave para cambios de estado */
+        .status-btn {
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .status-btn:active {
+            transform: scale(0.92);
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.85); }
+        }
+        .sync-dot-active {
+            animation: pulse-dot 2s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col selection:bg-indigo-100 selection:text-indigo-900">
+
+    <section id="login-screen" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-100 p-5">
+      <div class="w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
+        <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-600 text-white text-2xl font-bold">M</div>
+        <h1 class="text-center text-xl font-bold text-slate-900">Control de Asistencia</h1>
+        <p class="mt-1 text-center text-sm text-slate-500">Minsales · Acceso autorizado</p>
+        <form id="login-form" class="mt-6 space-y-4">
+          <div><label for="login-email" class="mb-1 block text-xs font-semibold text-slate-600">Correo electrónico</label><input id="login-email" type="email" autocomplete="username" required class="w-full rounded-xl border border-slate-300 px-3.5 py-3 text-sm" placeholder="Correo autorizado"></div>
+          <div><label for="login-password" class="mb-1 block text-xs font-semibold text-slate-600">Contraseña</label><input id="login-password" type="password" autocomplete="current-password" required class="w-full rounded-xl border border-slate-300 px-3.5 py-3 text-sm" placeholder="Contraseña"></div>
+          <p id="login-error" class="hidden text-sm text-rose-600" role="alert"></p>
+          <button id="login-submit" type="submit" class="w-full rounded-xl bg-indigo-600 px-4 py-3 font-semibold text-white">Iniciar sesión</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- Encabezado Superior -->
+    <header id="app-header" class="hidden bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
+            <div class="flex items-center space-x-2.5 min-w-0">
+                <div class="bg-indigo-600 text-white p-2 rounded-xl shadow-sm shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                    </svg>
+                </div>
+                <div class="min-w-0">
+                    <div class="flex items-center space-x-2">
+                        <h1 class="text-base sm:text-lg font-bold text-slate-900 leading-tight truncate">Control de Asistencia</h1>
+                        <!-- Indicador de Sincronización en Vivo -->
+                        <span id="sync-status-badge" class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 shrink-0">
+                            <span id="sync-status-dot" class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                            <span id="sync-status-text">Conectando...</span>
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-500 font-medium truncate" id="header-week-label">Semana del 16 Nov - 22 Nov 2026</p>
+                </div>
+            </div>
+
+            <button onclick="logoutApp()" class="mr-2 px-3 py-2 text-xs font-semibold text-slate-600 bg-slate-100 rounded-xl">Salir</button>
+            <!-- Botón de Reiniciar / Nueva Semana -->
+            <button onclick="openResetModal()" class="inline-flex items-center space-x-1.5 px-3 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 rounded-xl transition-colors shrink-0">
+                <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+                <span class="hidden sm:inline">Limpiar Semana</span>
+                <span class="sm:hidden">Limpiar</span>
+            </button>
+        </div>
+
+        <!-- Navegación por Pestañas (Mobile-First) -->
+        <nav class="max-w-3xl mx-auto px-4 pb-2">
+            <div class="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl">
+                <button id="tab-btn-registro" onclick="switchTab('registro')" class="flex items-center justify-center space-x-2 py-2.5 px-3 text-sm font-semibold rounded-lg bg-white text-indigo-600 shadow-sm transition-all">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                    <span>Registro (Minsales)</span>
+                </button>
+                <button id="tab-btn-reporte" onclick="switchTab('reporte')" class="flex items-center justify-center space-x-2 py-2.5 px-3 text-sm font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <span>Reporte para Elisa</span>
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Contenedor Principal -->
+    <main id="app-main" class="hidden flex-1 max-w-3xl w-full mx-auto px-4 py-5 pb-24">
+
+        <!-- ========================================== -->
+        <!-- VISTA 1: REGISTRO DE TURNOS (MENSALES)     -->
+        <!-- ========================================== -->
+        <section id="view-registro" class="space-y-4">
+            
+            <!-- Selector de Semana con Persistencia Histórica y Leyenda -->
+            <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div class="flex items-center space-x-2">
+                        <label for="week-selector" class="text-xs font-bold uppercase tracking-wider text-slate-500">Semana Activa</label>
+                        <span class="text-[11px] text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md font-medium">Historial guardado</span>
+                    </div>
+                    <div class="flex items-center space-x-2 w-full sm:w-auto">
+                        <select id="week-selector" onchange="changeSelectedWeek(this.value)" class="flex-1 sm:w-64 px-3 py-2 text-sm font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
+                            <!-- Opciones generadas dinámicamente -->
+                        </select>
+                        <button onclick="openNewWeekModal()" title="Crear nueva semana en el historial" class="p-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-xl border border-indigo-200 transition-colors shrink-0">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <span class="text-slate-500 font-medium">Toque cada día para marcar:</span>
+                    <div class="flex items-center flex-wrap gap-1.5">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-md font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">✓ Asistió</span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-md font-bold bg-sky-100 text-sky-800 border border-sky-200">L Libre</span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-md font-bold bg-rose-100 text-rose-800 border border-rose-200">X Faltó</span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-md font-bold bg-violet-100 text-violet-800 border border-violet-200">I Incapacidad</span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-md font-bold bg-amber-100 text-amber-800 border border-amber-200">P Permiso</span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-md font-bold bg-slate-100 text-slate-500 border border-slate-200">- Pend.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estado de Carga Inicial -->
+            <div id="loading-skeleton" class="space-y-3">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm animate-pulse space-y-3">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded-full bg-slate-200"></div>
+                        <div class="h-4 bg-slate-200 rounded w-32"></div>
+                    </div>
+                    <div class="grid grid-cols-7 gap-2 pt-2">
+                        <div class="h-11 bg-slate-100 rounded-xl"></div>
+                        <div class="h-11 bg-slate-100 rounded-xl"></div>
+                        <div class="h-11 bg-slate-100 rounded-xl"></div>
+                        <div class="h-11 bg-slate-100 rounded-xl"></div>
+                        <div class="h-11 bg-slate-100 rounded-xl"></div>
+                        <div class="h-11 bg-slate-100 rounded-xl"></div>
+                        <div class="h-11 bg-slate-100 rounded-xl"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lista de Tarjetas por Empleado (Sincronizada en vivo) -->
+            <div id="employees-list" class="space-y-3.5 hidden">
+                <!-- Se renderiza dinámicamente mediante Firestore -->
+            </div>
+
+            <!-- Botón para Agregar Nuevo Minsal -->
+            <div class="pt-2">
+                <button onclick="openEmployeeModal()" class="w-full py-3.5 px-4 bg-white hover:bg-slate-50 active:bg-slate-100 text-indigo-600 font-semibold text-sm rounded-2xl border-2 border-dashed border-indigo-200 flex items-center justify-center space-x-2 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    <span>Agregar Personal (Minsal)</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- VISTA 2: REPORTE AUTOMÁTICO PARA ELISA     -->
+        <!-- ========================================== -->
+        <section id="view-reporte" class="hidden space-y-5">
+            
+            <!-- Resumen Estadístico Visual -->
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm text-center">
+                    <div class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 font-bold text-sm mb-1">✓</div>
+                    <div class="text-2xl font-bold text-slate-900" id="stat-attended">0</div>
+                    <div class="text-xs font-medium text-slate-500">Turnos Cumplidos</div>
+                </div>
+                <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm text-center">
+                    <div class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-sky-100 text-sky-700 font-bold text-sm mb-1">L</div>
+                    <div class="text-2xl font-bold text-slate-900" id="stat-free">0</div>
+                    <div class="text-xs font-medium text-slate-500">Días Libres</div>
+                </div>
+                <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm text-center">
+                    <div class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-rose-100 text-rose-700 font-bold text-sm mb-1">X</div>
+                    <div class="text-2xl font-bold text-rose-600" id="stat-absent">0</div>
+                    <div class="text-xs font-medium text-slate-500">Inasistencias</div>
+                </div>
+                <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm text-center"><div class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-violet-100 text-violet-700 font-bold text-sm mb-1">I</div><div class="text-2xl font-bold text-violet-700" id="stat-incapacity">0</div><div class="text-xs font-medium text-slate-500">Incapacidades</div></div>
+                <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm text-center"><div class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-amber-100 text-amber-700 font-bold text-sm mb-1">P</div><div class="text-2xl font-bold text-amber-700" id="stat-permission">0</div><div class="text-xs font-medium text-slate-500">Permisos</div></div>
+            </div>
+
+            <!-- Opciones de Formato de Reporte -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                <div class="flex items-center justify-between gap-2">
+                    <div>
+                        <h2 class="text-sm font-bold text-slate-900">Vista Previa del Mensaje</h2>
+                        <p class="text-xs text-slate-500">Compilación en vivo para enviar a Elisa / Kri Sup</p>
+                    </div>
+                    <label class="inline-flex items-center space-x-2 cursor-pointer shrink-0">
+                        <input type="checkbox" id="include-details-toggle" onchange="generateReport()" checked class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500">
+                        <span class="text-xs font-medium text-slate-600">Detallar libres</span>
+                    </label>
+                </div>
+
+                <!-- Área de Texto del Reporte -->
+                <div class="relative">
+                    <textarea id="report-output" rows="11" readonly class="w-full p-3.5 text-sm font-normal text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none leading-relaxed resize-none"></textarea>
+                </div>
+
+                <!-- Botones de Acción Principales -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <button id="copy-btn" onclick="copyReportToClipboard()" class="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold text-sm rounded-xl shadow-sm flex items-center justify-center space-x-2 transition-all">
+                        <svg id="copy-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                        </svg>
+                        <span id="copy-btn-text">Copiar Reporte</span>
+                    </button>
+
+                    <button onclick="sendViaWhatsApp()" class="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-sm rounded-xl shadow-sm flex items-center justify-center space-x-2 transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                        </svg>
+                        <span>Enviar por WhatsApp</span>
+                    </button>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- ========================================== -->
+    <!-- MODAL: AGREGAR / EDITAR EMPLEADO           -->
+    <!-- ========================================== -->
+    <div id="employee-modal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl border border-slate-100 space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 id="employee-modal-title" class="text-base font-bold text-slate-900">Agregar Personal</h3>
+                <button onclick="closeEmployeeModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="space-y-3">
+                <div>
+                    <label for="employee-name-input" class="block text-xs font-semibold text-slate-600 mb-1">Nombre del Minsal</label>
+                    <input type="text" id="employee-name-input" placeholder="Ej. Roberto" class="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <p id="employee-error-msg" class="text-xs text-rose-600 mt-1 hidden">Por favor ingrese un nombre válido.</p>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end space-x-2 pt-2">
+                <button type="button" id="delete-employee-btn" onclick="deleteCurrentEmployee()" class="hidden mr-auto px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors">
+                    Desactivar
+                </button>
+                <button type="button" onclick="closeEmployeeModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+                    Cancelar
+                </button>
+                <button type="button" onclick="saveEmployee()" class="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm transition-colors">
+                    Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL: CREAR NUEVA SEMANA EN EL HISTORIAL  -->
+    <!-- ========================================== -->
+    <div id="new-week-modal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl border border-slate-100 space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="text-base font-bold text-slate-900">Nueva Semana en Historial</h3>
+                <button onclick="closeNewWeekModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="space-y-2">
+                <p class="text-xs text-slate-500">Los datos de las semanas anteriores quedarán guardados en la nube para consulta.</p>
+                <div>
+                    <label for="new-week-label-input" class="block text-xs font-semibold text-slate-600 mb-1">Nombre del Período</label>
+                    <input type="text" id="new-week-label-input" placeholder="Ej. Semana del 23 Nov - 29 Nov 2026" class="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <p id="new-week-error-msg" class="text-xs text-rose-600 mt-1 hidden">Ingrese el nombre de la nueva semana.</p>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end space-x-2 pt-2">
+                <button type="button" onclick="closeNewWeekModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+                    Cancelar
+                </button>
+                <button type="button" onclick="createNewWeek()" class="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm transition-colors">
+                    Crear Semana
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL: LIMPIAR MARCAS DE SEMANA ACTUAL     -->
+    <!-- ========================================== -->
+    <div id="reset-modal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl border border-slate-100 space-y-4">
+            <div class="flex items-start space-x-3">
+                <div class="bg-amber-100 text-amber-600 p-2 rounded-xl shrink-0">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-slate-900">¿Limpiar Marcas de esta Semana?</h3>
+                    <p class="text-xs text-slate-600 mt-1 leading-relaxed">
+                        Se pondrán en blanco todas las marcas (✓, L, X) de la semana seleccionada actualmente en todos los teléfonos. Si desea conservar este registro, use el botón "+" junto al selector de semana.
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end space-x-2 pt-2">
+                <button type="button" onclick="closeResetModal()" class="px-4 py-2.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+                    Cancelar
+                </button>
+                <button type="button" onclick="confirmResetWeek()" class="px-4 py-2.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-sm transition-colors">
+                    Sí, Limpiar Marcas
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notificación Flotante (Toast) -->
+    <div id="toast-notification" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 hidden bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-lg flex items-center space-x-2 transition-all max-w-[90vw]">
+        <svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path>
+        </svg>
+        <span id="toast-message" class="truncate">Sincronizado</span>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MÓDULO FIREBASE FIRESTORE EN TIEMPO REAL   -->
+    <!-- ========================================== -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            doc, 
+            setDoc, 
+            updateDoc, 
+            deleteDoc, 
+            onSnapshot, 
+            collection 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // ==========================================
+        // CONFIGURACIÓN DE FIREBASE E IDENTIFICADORES
+        // ==========================================
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'mensales-asistencia-app';
+        const firebaseConfig = {
+            apiKey: "AIzaSyCJUpWyI0Qw3L5MRB6wra122OcagbitbcM",
+            authDomain: "minsal-b3073.firebaseapp.com",
+            projectId: "minsal-b3073",
+            storageBucket: "minsal-b3073.firebasestorage.app",
+            messagingSenderId: "1077112473689",
+            appId: "1:1077112473689:web:39a7e0caee255f4f0a4948"
+        };
+
+        let app, auth, db;
+        let currentUser = null;
+        let unsubscribeEmployees = null;
+        let unsubscribeWeeks = null;
+
+        // Días de la semana (0 = Lunes, 6 = Domingo)
+        const DAYS = [
+            { short: 'Lun', full: 'Lunes' },
+            { short: 'Mar', full: 'Martes' },
+            { short: 'Mié', full: 'Miércoles' },
+            { short: 'Jue', full: 'Jueves' },
+            { short: 'Vie', full: 'Viernes' },
+            { short: 'Sáb', full: 'Sábado' },
+            { short: 'Dom', full: 'Domingo' }
+        ];
+
+        // Ciclo de estados al tocar una celda: '-' -> '✓' -> 'L' -> 'X' -> '-'
+        const STATUS_CYCLE = ['-', '✓', 'L', 'X', 'I', 'P'];
+
+        // Estilos visuales por estado
+        const STATUS_CONFIG = {
+            '-': {
+                label: '-',
+                title: 'Sin marcar',
+                classes: 'bg-slate-100 text-slate-400 border-slate-200 hover:bg-slate-200'
+            },
+            '✓': {
+                label: '✓',
+                title: 'Asistió / Programado',
+                classes: 'bg-emerald-100 text-emerald-800 border-emerald-300 shadow-xs font-extrabold'
+            },
+            'L': {
+                label: 'L',
+                title: 'Día Libre',
+                classes: 'bg-sky-100 text-sky-800 border-sky-300 shadow-xs font-extrabold'
+            },
+            'X': {
+                label: 'X',
+                title: 'Inasistencia / Faltó',
+                classes: 'bg-rose-100 text-rose-800 border-rose-300 shadow-xs font-extrabold'
+            },
+            'I': { label: 'I', title: 'Incapacidad', classes: 'bg-violet-100 text-violet-800 border-violet-300 shadow-xs font-extrabold' },
+            'P': { label: 'P', title: 'Permiso', classes: 'bg-amber-100 text-amber-800 border-amber-300 shadow-xs font-extrabold' }
+        };
+
+        // Semana inicial por defecto (Lunes 16 Nov - Domingo 22 Nov 2026)
+        const DEFAULT_WEEK_ID = '2026-11-16';
+        const DEFAULT_WEEK_LABEL = 'Semana del 16 Nov - 22 Nov 2026';
+
+        // Estado reactivo en memoria alimentado por Firestore
+        let appState = {
+            selectedWeekId: DEFAULT_WEEK_ID,
+            weeks: [
+                { id: DEFAULT_WEEK_ID, label: DEFAULT_WEEK_LABEL, createdAt: 1794816000000 }
+            ],
+            employees: []
+        };
+
+        let editingEmployeeId = null;
+        let hasSeededInitialData = false;
+
+        // ==========================================
+        // ACTUALIZAR INDICADOR DE CONEXIÓN EN VIVO
+        // ==========================================
+        function setSyncStatus(status) {
+            const badge = document.getElementById('sync-status-badge');
+            const dot = document.getElementById('sync-status-dot');
+            const text = document.getElementById('sync-status-text');
+
+            if (status === 'live') {
+                badge.className = 'inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0';
+                dot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 sync-dot-active';
+                text.textContent = 'En vivo';
+            } else if (status === 'syncing') {
+                badge.className = 'inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 shrink-0';
+                dot.className = 'w-1.5 h-1.5 rounded-full bg-indigo-500 animate-ping';
+                text.textContent = 'Guardando...';
+            } else {
+                badge.className = 'inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 shrink-0';
+                dot.className = 'w-1.5 h-1.5 rounded-full bg-rose-500';
+                text.textContent = 'Sin conexión';
+            }
+        }
+
+        // ==========================================
+        // INICIALIZACIÓN FIREBASE Y AUTENTICACIÓN
+        // ==========================================
+        async function initFirebase() {
+            try {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                document.getElementById('login-form').addEventListener('submit', async (event) => {
+                    event.preventDefault();
+                    const email = document.getElementById('login-email').value.trim();
+                    const password = document.getElementById('login-password').value;
+                    const errorEl = document.getElementById('login-error');
+                    const button = document.getElementById('login-submit');
+                    errorEl.classList.add('hidden'); button.disabled = true; button.textContent = 'Verificando...';
+                    try { await signInWithEmailAndPassword(auth, email, password); }
+                    catch (error) {
+                        console.error('Error de acceso:', error);
+                        errorEl.textContent = error.code === 'auth/invalid-credential' ? 'Correo o contraseña incorrectos.' : 'No se pudo iniciar sesión. Verifica los datos y la conexión.';
+                        errorEl.classList.remove('hidden');
+                    } finally { button.disabled = false; button.textContent = 'Iniciar sesión'; }
+                });
+                onAuthStateChanged(auth, (user) => {
+                    currentUser = user || null;
+                    const login = document.getElementById('login-screen');
+                    const header = document.getElementById('app-header');
+                    const main = document.getElementById('app-main');
+                    if (user) {
+                        if (user.uid !== 'pv63hlYkYSRmXdM4ei9qgBhdWd83') {
+                            signOut(auth); return;
+                        }
+                        login.classList.add('hidden'); header.classList.remove('hidden'); main.classList.remove('hidden');
+                        startRealtimeListeners();
+                    } else {
+                        if (unsubscribeEmployees) unsubscribeEmployees();
+                        if (unsubscribeWeeks) unsubscribeWeeks();
+                        unsubscribeEmployees = null; unsubscribeWeeks = null;
+                        header.classList.add('hidden'); main.classList.add('hidden'); login.classList.remove('hidden');
+                        setSyncStatus('offline');
+                    }
+                });
+            } catch (error) {
+                console.error('Error inicializando Firebase:', error);
+                const el = document.getElementById('login-error'); el.textContent = 'No se pudo conectar con Firebase.'; el.classList.remove('hidden');
+            }
+        }
+        window.logoutApp = async function() { if (auth) await signOut(auth); };
+
+        // ==========================================
+        // SUSCRIPCIÓN EN TIEMPO REAL (RULE 1 & RULE 2)
+        // ==========================================
+        function startRealtimeListeners() {
+            if (!currentUser) return;
+
+            // Ruta pública compartida entre todos los teléfonos: /artifacts/{appId}/public/data/{collectionName}
+            const weeksColRef = collection(db, 'artifacts', appId, 'public', 'data', 'mensales_weeks');
+            const employeesColRef = collection(db, 'artifacts', appId, 'public', 'data', 'mensales_staff');
+
+            // 1. Escuchar historial de semanas
+            unsubscribeWeeks = onSnapshot(weeksColRef, async (snapshot) => {
+                if (snapshot.empty) {
+                    // Crear la semana inicial por defecto si la colección está vacía
+                    const defaultWeekDoc = doc(db, 'artifacts', appId, 'public', 'data', 'mensales_weeks', DEFAULT_WEEK_ID);
+                    await setDoc(defaultWeekDoc, {
+                        label: DEFAULT_WEEK_LABEL,
+                        createdAt: Date.now()
+                    });
+                    return;
+                }
+
+                const loadedWeeks = [];
+                snapshot.forEach(docSnap => {
+                    loadedWeeks.push({ id: docSnap.id, ...docSnap.data() });
+                });
+
+                // Ordenar en memoria (RULE 2: evitar orderBy compuesto en Firestore)
+                loadedWeeks.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+                appState.weeks = loadedWeeks;
+
+                // Verificar que la semana seleccionada exista; si no, seleccionar la más reciente
+                if (!appState.weeks.some(w => w.id === appState.selectedWeekId)) {
+                    appState.selectedWeekId = appState.weeks[0].id;
+                }
+
+                renderWeekSelector();
+                renderEmployeesList();
+                generateReport();
+            }, (error) => {
+                console.error("Error escuchando semanas:", error);
+                setSyncStatus('offline');
+            });
+
+            // 2. Escuchar personal y sus registros semanales en tiempo real
+            unsubscribeEmployees = onSnapshot(employeesColRef, async (snapshot) => {
+                setSyncStatus('live');
+                document.getElementById('loading-skeleton').classList.add('hidden');
+                document.getElementById('employees-list').classList.remove('hidden');
+
+                const loadedEmployees = [];
+                snapshot.forEach(docSnap => {
+                    loadedEmployees.push({ id: docSnap.id, ...docSnap.data() });
+                });
+
+                // Ordenar por orden de creación en memoria
+                loadedEmployees.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+                appState.employees = loadedEmployees;
+
+                renderEmployeesList();
+                generateReport();
+            }, (error) => {
+                console.error("Error escuchando personal:", error);
+                setSyncStatus('offline');
+            });
+        }
+
+        // Obtener arreglo de 7 días de un empleado para la semana activa
+        function getEmployeeWeekDays(emp) {
+            if (emp.records && Array.isArray(emp.records[appState.selectedWeekId])) {
+                return emp.records[appState.selectedWeekId];
+            }
+            return ['-', '-', '-', '-', '-', '-', '-'];
+        }
+
+        // ==========================================
+        // RENDERIZADO DE SELECTOR DE SEMANAS
+        // ==========================================
+        function renderWeekSelector() {
+            const selector = document.getElementById('week-selector');
+            const headerLabel = document.getElementById('header-week-label');
+            selector.innerHTML = '';
+
+            appState.weeks.forEach(week => {
+                const option = document.createElement('option');
+                option.value = week.id;
+                option.textContent = week.label;
+                if (week.id === appState.selectedWeekId) {
+                    option.selected = true;
+                    headerLabel.textContent = week.label;
+                }
+                selector.appendChild(option);
+            });
+        }
+
+        window.changeSelectedWeek = function(weekId) {
+            appState.selectedWeekId = weekId;
+            const selectedWeek = appState.weeks.find(w => w.id === weekId);
+            if (selectedWeek) {
+                document.getElementById('header-week-label').textContent = selectedWeek.label;
+            }
+            renderEmployeesList();
+            generateReport();
+        };
+
+        // ==========================================
+        // NAVEGACIÓN ENTRE PESTAÑAS
+        // ==========================================
+        window.switchTab = function(tabName) {
+            const viewRegistro = document.getElementById('view-registro');
+            const viewReporte = document.getElementById('view-reporte');
+            const btnRegistro = document.getElementById('tab-btn-registro');
+            const btnReporte = document.getElementById('tab-btn-reporte');
+
+            if (tabName === 'registro') {
+                viewRegistro.classList.remove('hidden');
+                viewReporte.classList.add('hidden');
+
+                btnRegistro.className = 'flex items-center justify-center space-x-2 py-2.5 px-3 text-sm font-semibold rounded-lg bg-white text-indigo-600 shadow-sm transition-all';
+                btnReporte.className = 'flex items-center justify-center space-x-2 py-2.5 px-3 text-sm font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all';
+            } else {
+                viewRegistro.classList.add('hidden');
+                viewReporte.classList.remove('hidden');
+
+                btnReporte.className = 'flex items-center justify-center space-x-2 py-2.5 px-3 text-sm font-semibold rounded-lg bg-white text-indigo-600 shadow-sm transition-all';
+                btnRegistro.className = 'flex items-center justify-center space-x-2 py-2.5 px-3 text-sm font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all';
+                
+                generateReport();
+            }
+        };
+
+        // ==========================================
+        // RENDERIZADO DE TARJETAS DE MENSALES
+        // ==========================================
+        function renderEmployeesList() {
+            const container = document.getElementById('employees-list');
+            container.innerHTML = '';
+
+            const activeEmployees = appState.employees.filter(emp => emp.active !== false);
+            if (activeEmployees.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white p-8 rounded-2xl border border-slate-200 text-center space-y-2">
+                        <p class="text-sm font-semibold text-slate-700">No hay personal registrado</p>
+                        <p class="text-xs text-slate-500">Toque el botón inferior para agregar a los mensales.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            activeEmployees.forEach(emp => {
+                const days = getEmployeeWeekDays(emp);
+
+                // Calcular contadores individuales de la semana seleccionada
+                const countAttended = days.filter(d => d === '✓').length;
+                const countFree = days.filter(d => d === 'L').length;
+                const countAbsent = days.filter(d => d === 'X').length;
+
+                // Generar insignia de resumen rápido por empleado
+                let badgeHtml = '';
+                if (countAbsent > 0) {
+                    badgeHtml = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800">${countAbsent} ${countAbsent === 1 ? 'falta' : 'faltas'}</span>`;
+                } else if (countAttended > 0) {
+                    badgeHtml = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">Al día (${countAttended})</span>`;
+                } else {
+                    badgeHtml = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-500">Sin marcas</span>`;
+                }
+
+                // Construir botones táctiles de los 7 días (Lunes a Domingo)
+                let daysGridHtml = '';
+                DAYS.forEach((day, dayIndex) => {
+                    const currentStatus = days[dayIndex] || '-';
+                    const config = STATUS_CONFIG[currentStatus];
+
+                    daysGridHtml += `
+                        <div class="flex flex-col items-center space-y-1">
+                            <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-tight">${day.short}</span>
+                            <button 
+                                type="button"
+                                onclick="cycleDayStatus('${emp.id}', ${dayIndex})"
+                                title="${day.full}: ${config.title}"
+                                class="status-btn w-full h-11 sm:h-12 rounded-xl border text-base flex items-center justify-center select-none ${config.classes}">
+                                ${config.label}
+                            </button>
+                        </div>
+                    `;
+                });
+
+                const card = document.createElement('div');
+                card.className = 'bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3';
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2.5">
+                            <div class="w-8 h-8 rounded-full bg-indigo-50 text-indigo-700 font-bold text-sm flex items-center justify-center border border-indigo-100">
+                                ${escapeHtml(emp.name.charAt(0).toUpperCase())}
+                            </div>
+                            <div>
+                                <h3 class="text-sm sm:text-base font-bold text-slate-900 leading-none">${escapeHtml(emp.name)}</h3>
+                                <div class="flex items-center space-x-2 mt-1 text-[11px] text-slate-500">
+                                    <span>✓: ${countAttended}</span>
+                                    <span>•</span>
+                                    <span>L: ${countFree}</span>
+                                    <span>•</span>
+                                    <span>X: ${countAbsent}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            ${badgeHtml}
+                            <button onclick="openEmployeeModal('${emp.id}')" title="Editar nombre o eliminar" class="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Cuadrícula de 7 días táctiles -->
+                    <div class="grid grid-cols-7 gap-1.5 sm:gap-2 pt-1">
+                        ${daysGridHtml}
+                    </div>
+                `;
+
+                container.appendChild(card);
+            });
+        }
+
+        // Actualizar estado de un día en Firestore (sincroniza en todos los dispositivos)
+        window.cycleDayStatus = async function(empId, dayIndex) {
+            if (!currentUser) return;
+            const emp = appState.employees.find(e => e.id === empId);
+            if (!emp) return;
+
+            const currentDays = [...getEmployeeWeekDays(emp)];
+            const currentStatus = currentDays[dayIndex] || '-';
+            const nextIndex = (STATUS_CYCLE.indexOf(currentStatus) + 1) % STATUS_CYCLE.length;
+            currentDays[dayIndex] = STATUS_CYCLE[nextIndex];
+
+            setSyncStatus('syncing');
+            try {
+                const empDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'mensales_staff', empId);
+                await updateDoc(empDocRef, {
+                    [`records.${appState.selectedWeekId}`]: currentDays
+                });
+                setSyncStatus('live');
+            } catch (error) {
+                console.error("Error actualizando asistencia en Firestore:", error);
+                setSyncStatus('offline');
+                showToast("Error al guardar cambio");
+            }
+        };
+
+        // ==========================================
+        // GENERACIÓN AUTOMÁTICA DE REPORTE (ELISA)
+        // ==========================================
+        window.generateReport = function() {
+            let totalAttended = 0;
+            let totalFree = 0;
+            let totalAbsent = 0;
+            let totalIncapacity = 0;
+            let totalPermission = 0;
+
+            const includeFreeDetails = document.getElementById('include-details-toggle').checked;
+            
+            const linesWithIssues = [];
+            const linesComplete = [];
+            const linesPending = [];
+
+            appState.employees.filter(emp => emp.active !== false || getEmployeeWeekDays(emp).some(status => status !== '-')).forEach(emp => {
+                const days = getEmployeeWeekDays(emp);
+                let attended = 0;
+                const freeDays = [];
+                const absentDays = [];
+                const incapacityDays = [];
+                const permissionDays = [];
+
+                days.forEach((status, idx) => {
+                    if (status === '✓') {
+                        attended++;
+                        totalAttended++;
+                    } else if (status === 'L') {
+                        freeDays.push(DAYS[idx].full);
+                        totalFree++;
+                    } else if (status === 'X') {
+                        absentDays.push(DAYS[idx].full); totalAbsent++;
+                    } else if (status === 'I') {
+                        incapacityDays.push(DAYS[idx].full); totalIncapacity++;
+                    } else if (status === 'P') {
+                        permissionDays.push(DAYS[idx].full); totalPermission++;
+                    }
+                });
+
+                // Redacción ejecutiva en lenguaje natural
+                const special = [incapacityDays.length ? `Incapacidad: ${incapacityDays.join(', ')}` : '', permissionDays.length ? `Permiso: ${permissionDays.join(', ')}` : ''].filter(Boolean);
+                const specialSuffix = special.length ? ` | ${special.join(' | ')}` : '';
+                if (absentDays.length > 0) {
+                    const countText = absentDays.length === 1 ? 'faltó 1 día' : `faltó ${absentDays.length} días`;
+                    const daysList = `(${absentDays.join(', ')})`;
+                    let line = `- ${emp.name}: ${countText} ${daysList}. Cumplió ${attended} ${attended === 1 ? 'turno' : 'turnos'}`;
+                    if (includeFreeDetails && freeDays.length > 0) {
+                        line += ` | Libre: ${freeDays.join(', ')}`;
+                    }
+                    linesWithIssues.push(line + specialSuffix);
+                } else if (attended > 0) {
+                    let line = `- ${emp.name}: todos los turnos completos (${attended} asistencias)`;
+                    if (includeFreeDetails && freeDays.length > 0) {
+                        line += ` | Libre: ${freeDays.join(', ')}`;
+                    }
+                    linesComplete.push(line + specialSuffix);
+                } else if (freeDays.length > 0 && attended === 0) {
+                    linesPending.push(`- ${emp.name}: solo días libres marcados (${freeDays.join(', ')})${specialSuffix}`);
+                } else {
+                    linesPending.push(`- ${emp.name}: sin turnos registrados aún${specialSuffix}`);
+                }
+            });
+
+            // Actualizar tarjetas de estadísticas
+            document.getElementById('stat-attended').textContent = totalAttended;
+            document.getElementById('stat-free').textContent = totalFree;
+            document.getElementById('stat-absent').textContent = totalAbsent;
+            document.getElementById('stat-incapacity').textContent = totalIncapacity;
+            document.getElementById('stat-permission').textContent = totalPermission;
+
+            // Obtener etiqueta de la semana activa
+            const currentWeekObj = appState.weeks.find(w => w.id === appState.selectedWeekId);
+            const weekTitle = currentWeekObj ? currentWeekObj.label : DEFAULT_WEEK_LABEL;
+
+            let reportText = `REPORTE DE ASISTENCIA - MENSALES\n`;
+            reportText += `Período: ${weekTitle}\n`;
+            reportText += `----------------------------------\n`;
+
+            if (appState.employees.length === 0) {
+                reportText += `No hay personal registrado en la lista.`;
+            } else {
+                if (linesWithIssues.length > 0) {
+                    reportText += `\nNOVEDADES / INASISTENCIAS:\n`;
+                    reportText += linesWithIssues.join('\n') + '\n';
+                }
+
+                if (linesComplete.length > 0) {
+                    reportText += `\nTURNOS COMPLETOS:\n`;
+                    reportText += linesComplete.join('\n') + '\n';
+                }
+
+                if (linesPending.length > 0) {
+                    reportText += `\nPENDIENTES DE MARCAJE:\n`;
+                    reportText += linesPending.join('\n') + '\n';
+                }
+
+                reportText += `\n----------------------------------\n`;
+                reportText += `Resumen general: ${totalAttended} asistencias | ${totalFree} libres | ${totalAbsent} faltas | ${totalIncapacity} incapacidades | ${totalPermission} permisos.`;
+            }
+
+            document.getElementById('report-output').value = reportText.trim();
+        };
+
+        // ==========================================
+        // ACCIONES DE COPIADO Y WHATSAPP
+        // ==========================================
+        window.copyReportToClipboard = function() {
+            const textarea = document.getElementById('report-output');
+            textarea.select();
+            textarea.setSelectionRange(0, 99999);
+
+            let copied = false;
+            try {
+                copied = document.execCommand('copy');
+            } catch (err) {
+                console.error('Error al copiar:', err);
+            }
+
+            window.getSelection().removeAllRanges();
+
+            if (copied) {
+                const btn = document.getElementById('copy-btn');
+                const btnText = document.getElementById('copy-btn-text');
+                const originalText = btnText.textContent;
+
+                btn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+                btn.classList.add('bg-slate-900');
+                btnText.textContent = 'Reporte Copiado';
+
+                showToast('Reporte copiado. Listo para enviar a Elisa.');
+
+                setTimeout(() => {
+                    btn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+                    btn.classList.remove('bg-slate-900');
+                    btnText.textContent = originalText;
+                }, 2500);
+            } else {
+                showToast('Seleccione el texto manualmente para copiar.');
+            }
+        };
+
+        window.sendViaWhatsApp = function() {
+            const reportText = document.getElementById('report-output').value;
+            const encodedText = encodeURIComponent(reportText);
+            const whatsappUrl = `https://wa.me/?text=${encodedText}`;
+            window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+        };
+
+        // ==========================================
+        // GESTIÓN DE PERSONAL EN FIRESTORE
+        // ==========================================
+        window.openEmployeeModal = function(empId = null) {
+            editingEmployeeId = empId;
+            const modal = document.getElementById('employee-modal');
+            const title = document.getElementById('employee-modal-title');
+            const input = document.getElementById('employee-name-input');
+            const deleteBtn = document.getElementById('delete-employee-btn');
+            const errorMsg = document.getElementById('employee-error-msg');
+
+            errorMsg.classList.add('hidden');
+
+            if (empId) {
+                const emp = appState.employees.find(e => e.id === empId);
+                title.textContent = 'Editar Personal';
+                input.value = emp ? emp.name : '';
+                deleteBtn.classList.remove('hidden');
+            } else {
+                title.textContent = 'Agregar Nuevo Minsal';
+                input.value = '';
+                deleteBtn.classList.add('hidden');
+            }
+
+            modal.classList.remove('hidden');
+            setTimeout(() => input.focus(), 50);
+        };
+
+        window.closeEmployeeModal = function() {
+            document.getElementById('employee-modal').classList.add('hidden');
+            editingEmployeeId = null;
+        };
+
+        window.saveEmployee = async function() {
+            if (!currentUser) return;
+            const input = document.getElementById('employee-name-input');
+            const errorMsg = document.getElementById('employee-error-msg');
+            const name = input.value.trim();
+
+            if (!name) {
+                errorMsg.classList.remove('hidden');
+                input.focus();
+                return;
+            }
+
+            setSyncStatus('syncing');
+            try {
+                if (editingEmployeeId) {
+                    const empDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'mensales_staff', editingEmployeeId);
+                    await updateDoc(empDocRef, { name: name });
+                    showToast('Nombre actualizado en todos los teléfonos');
+                } else {
+                    const newId = 'emp-' + Date.now();
+                    const empDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'mensales_staff', newId);
+                    await setDoc(empDocRef, {
+                        name: name,
+                        active: true,
+                        createdAt: Date.now(),
+                        records: {
+                            [appState.selectedWeekId]: ['-', '-', '-', '-', '-', '-', '-']
+                        }
+                    });
+                    showToast(`${name} agregado al equipo`);
+                }
+                setSyncStatus('live');
+                closeEmployeeModal();
+            } catch (error) {
+                console.error("Error guardando personal:", error);
+                setSyncStatus('offline');
+                showToast("Error al guardar en la nube");
+            }
+        };
+
+        window.deleteCurrentEmployee = async function() {
+            if (!currentUser || !editingEmployeeId) return;
+            setSyncStatus('syncing');
+            try {
+                const empDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'mensales_staff', editingEmployeeId);
+                await updateDoc(empDocRef, { active: false });
+                setSyncStatus('live');
+                closeEmployeeModal();
+                showToast('Personal desactivado; historial conservado');
+            } catch (error) {
+                console.error("Error desactivando personal:", error);
+                setSyncStatus('offline');
+                showToast("Error al desactivar");
+            }
+        };
+
+        document.getElementById('employee-name-input').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                saveEmployee();
+            }
+        });
+
+        // ==========================================
+        // GESTIÓN DE NUEVAS SEMANAS EN HISTORIAL
+        // ==========================================
+        window.openNewWeekModal = function() {
+            const modal = document.getElementById('new-week-modal');
+            const input = document.getElementById('new-week-label-input');
+            const errorMsg = document.getElementById('new-week-error-msg');
+            errorMsg.classList.add('hidden');
+            input.value = '';
+            modal.classList.remove('hidden');
+            setTimeout(() => input.focus(), 50);
+        };
+
+        window.closeNewWeekModal = function() {
+            document.getElementById('new-week-modal').classList.add('hidden');
+        };
+
+        window.createNewWeek = async function() {
+            if (!currentUser) return;
+            const input = document.getElementById('new-week-label-input');
+            const errorMsg = document.getElementById('new-week-error-msg');
+            const label = input.value.trim();
+
+            if (!label) {
+                errorMsg.classList.remove('hidden');
+                input.focus();
+                return;
+            }
+
+            const newWeekId = 'week-' + Date.now();
+            setSyncStatus('syncing');
+
+            try {
+                const weekDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'mensales_weeks', newWeekId);
+                await setDoc(weekDocRef, {
+                    label: label,
+                    createdAt: Date.now()
+                });
+
+                appState.selectedWeekId = newWeekId;
+                setSyncStatus('live');
+                closeNewWeekModal();
+                showToast(`Semana "${label}" creada`);
+            } catch (error) {
+                console.error("Error creando semana:", error);
+                setSyncStatus('offline');
+                showToast("Error al crear semana");
+            }
+        };
+
+        document.getElementById('new-week-label-input').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                createNewWeek();
+            }
+        });
+
+        // ==========================================
+        // LIMPIAR MARCAS DE SEMANA ACTUAL (MODAL)
+        // ==========================================
+        window.openResetModal = function() {
+            document.getElementById('reset-modal').classList.remove('hidden');
+        };
+
+        window.closeResetModal = function() {
+            document.getElementById('reset-modal').classList.add('hidden');
+        };
+
+        window.confirmResetWeek = async function() {
+            if (!currentUser) return;
+            setSyncStatus('syncing');
+
+            try {
+                const blankDays = ['-', '-', '-', '-', '-', '-', '-'];
+                const updatePromises = appState.employees.filter(emp => emp.active !== false).map(emp => {
+                    const empDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'mensales_staff', emp.id);
+                    return updateDoc(empDocRef, {
+                        [`records.${appState.selectedWeekId}`]: blankDays
+                    });
+                });
+
+                await Promise.all(updatePromises);
+                setSyncStatus('live');
+                closeResetModal();
+                showToast('Marcas de la semana actual limpiadas');
+            } catch (error) {
+                console.error("Error limpiando marcas:", error);
+                setSyncStatus('offline');
+                showToast("Error al limpiar marcas");
+            }
+        };
+
+        // ==========================================
+        // UTILIDADES UI
+        // ==========================================
+        let toastTimeout = null;
+        function showToast(message) {
+            const toast = document.getElementById('toast-notification');
+            const msgEl = document.getElementById('toast-message');
+            msgEl.textContent = message;
+            toast.classList.remove('hidden');
+
+            if (toastTimeout) clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Iniciar aplicación conectada a Firebase
+        window.addEventListener('DOMContentLoaded', initFirebase);
+    </script>
+</body>
+</html>
