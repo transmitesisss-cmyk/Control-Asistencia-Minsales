@@ -99,7 +99,7 @@ const timeLabel=value=>{if(!value)return '';const d=value.toDate?value.toDate():
 const parseDate=s=>new Date(`${s}T12:00:00`);const dateKey=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;const addDays=(d,n)=>{let x=new Date(d);x.setDate(x.getDate()+n);return x};const monday=d=>{let x=new Date(d);x.setHours(12,0,0,0);x.setDate(x.getDate()-((x.getDay()+6)%7));return x};const fmt=d=>new Intl.DateTimeFormat('es-SV',{day:'2-digit',month:'short',year:'numeric'}).format(d);const weekDates=d=>Array.from({length:7},(_,i)=>addDays(monday(d),i));const dateRange=()=>mode==='week'?weekDates(periodDate):Array.from({length:new Date(periodDate.getFullYear(),periodDate.getMonth()+1,0).getDate()},(_,i)=>new Date(periodDate.getFullYear(),periodDate.getMonth(),i+1,12));const localMinutes=()=>{const p=new Intl.DateTimeFormat('en-GB',{timeZone:'America/El_Salvador',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date()).split(':');return Number(p[0])*60+Number(p[1])};
 // BETA 3: geocerca de referencia del centro del Hospital Médico Quirúrgico.
 // Confirmar físicamente esta coordenada antes de activar el bloqueo en producción.
-const HOSPITAL_GEOFENCE={lat:13.70215,lng:-89.20703,radiusMeters:80,maxAccuracyMeters:50};
+const HOSPITAL_GEOFENCE={lat:13.70215,lng:-89.20703,radiusMeters:85,maxAccuracyMeters:50};
 const distanceMeters=(lat1,lon1,lat2,lon2)=>{
  const rad=x=>x*Math.PI/180,R=6371000,dLat=rad(lat2-lat1),dLon=rad(lon2-lon1);
  const a=Math.sin(dLat/2)**2+Math.cos(rad(lat1))*Math.cos(rad(lat2))*Math.sin(dLon/2)**2;
