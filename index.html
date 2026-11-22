@@ -747,15 +747,29 @@ async function runAutomaticClose(){
   for(const emp of employees){
    if(emp.active===false)continue;
    const id=`${today}_${emp.id}`,ref=doc(db,...ROOT,'daily_attendance',id),sc=schedules[id];
-   if(!sc||sc.kind!=='shift'||!sc.startTime)continue;const [sh,sm]=sc.startTime.split(':').map(Number);let closeAt=sh*60+sm+30;if(closeAt>=1440)closeAt-=1440;let delta=minutes-closeAt;if(delta< -720)delta+=1440;if(delta<0)continue;
+   if(!sc)continue;
+   // Si el día está programado como libre, registrar L automáticamente
+   // en el mismo cierre diario que registra las faltas.
+   let autoStatus=null;
+   if(sc.kind==='off'){
+    autoStatus='L';
+   }else if(sc.kind==='shift'&&sc.startTime){
+    const [sh,sm]=sc.startTime.split(':').map(Number);
+    let closeAt=sh*60+sm+30;
+    if(closeAt>=1440)closeAt-=1440;
+    let delta=minutes-closeAt;
+    if(delta< -720)delta+=1440;
+    if(delta<0)continue;
+    autoStatus='X';
+   }else continue;
    try{
     const snap=await getDoc(ref);
     if(snap.exists())continue;
-    await setDoc(ref,{date:today,employeeId:emp.id,employeeName:emp.name||'',status:'X',locked:true,createdAt:serverTimestamp(),updatedAt:serverTimestamp(),actorUid:user.uid,actorRole:'supervisor',source:'supervisor-auto'});
+    await setDoc(ref,{date:today,employeeId:emp.id,employeeName:emp.name||'',status:autoStatus,locked:true,createdAt:serverTimestamp(),updatedAt:serverTimestamp(),actorUid:user.uid,actorRole:'supervisor',source:autoStatus==='L'?'supervisor-auto-off':'supervisor-auto'});
     created++;
    }catch(err){if(err.code!=='permission-denied')console.error('Cierre automático:',emp.id,err)}
   }
-  if(created)toast(`Cierre automático: ${created} falta(s) registradas`);
+  if(created)toast(`Cierre automático: ${created} marcación(es) registradas (faltas y libres)`);
  }catch(err){console.error('Error en cierre automático:',err);setSync('Error cierre')}
  finally{autoCloseBusy=false}
 }
