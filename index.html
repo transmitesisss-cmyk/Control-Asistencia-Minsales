@@ -133,6 +133,55 @@ button:disabled{cursor:not-allowed;opacity:.58}
  #sync{animation:none}
 }
 
+
+/* ===== Capa extra de movimiento: edición animada ===== */
+body:before{content:"";position:fixed;inset:-25%;z-index:-1;pointer-events:none;background:
+ radial-gradient(circle at 18% 22%,#c7d2fe55 0,transparent 23%),
+ radial-gradient(circle at 82% 35%,#bae6fd55 0,transparent 22%),
+ radial-gradient(circle at 55% 88%,#ddd6fe55 0,transparent 25%);
+ animation:ambientDrift 22s ease-in-out infinite alternate}
+@keyframes ambientDrift{0%{transform:translate3d(-1.5%,0,0) rotate(0deg) scale(1)}100%{transform:translate3d(1.5%,-1%,0) rotate(4deg) scale(1.04)}}
+@keyframes logoBounce{0%,100%{transform:translateY(0) rotate(0)}35%{transform:translateY(-4px) rotate(-5deg)}65%{transform:translateY(0) rotate(4deg)}}
+@keyframes buttonGlow{0%,100%{box-shadow:0 5px 15px #4f46e51a}50%{box-shadow:0 7px 24px #6366f155}}
+@keyframes badgePop{0%{opacity:0;transform:scale(.75)}70%{transform:scale(1.08)}100%{opacity:1;transform:scale(1)}}
+@keyframes navSlide{from{opacity:.55;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+@keyframes statusPulse{0%,100%{box-shadow:0 0 0 0 #10b98100}50%{box-shadow:0 0 0 5px #10b98120}}
+@keyframes selectedGlow{0%,100%{box-shadow:0 0 0 0 #818cf800}50%{box-shadow:0 0 0 4px #818cf822}}
+@keyframes rippleWave{0%{transform:scale(.2);opacity:.35}100%{transform:scale(2.8);opacity:0}}
+@keyframes modalBackdrop{from{opacity:0;backdrop-filter:blur(0)}to{opacity:1;backdrop-filter:blur(5px)}}
+@keyframes checkDraw{0%{transform:scale(.55) rotate(-20deg);opacity:.25}65%{transform:scale(1.18) rotate(5deg)}100%{transform:scale(1) rotate(0);opacity:1}}
+@keyframes floatBadge{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+header .rounded-xl.bg-indigo-600:first-child{animation:logoBounce 5s ease-in-out infinite;transform-origin:center}
+#pwaInstall,#pwaInstallHeader{animation:buttonGlow 4s ease-in-out infinite}
+#sync{animation:statusPulse 2.5s ease-in-out infinite, badgePop .45s ease-out both}
+header nav button:focus{animation:navSlide .25s ease-out}
+#employeeList .daycell[class*="emerald"]{animation:checkDraw .42s cubic-bezier(.2,.8,.2,1) both}
+#employeeList .daycell[class*="sky"],#employeeList .daycell[class*="violet"],#employeeList .daycell[class*="amber"],#employeeList .daycell[class*="rose"]{animation:badgePop .32s ease-out both}
+#minsalEmployeeChooser{animation:selectedGlow 4.5s ease-in-out infinite}
+#minsalEmployeeMenu:not(.hidden){transform-origin:top;animation:floatIn .24s cubic-bezier(.2,.8,.2,1) both}
+#attendanceView>.card:first-child .rounded-lg{transition:transform .2s,filter .2s}
+#attendanceView>.card:first-child .rounded-lg:hover{transform:translateY(-2px);filter:saturate(1.12)}
+#employeeList>.card{transition:transform .28s cubic-bezier(.2,.8,.2,1),box-shadow .28s,border-color .28s}
+#employeeList>.card:hover{border-color:#c7d2fe}
+#employeeList .daycell:not(:disabled){position:relative;overflow:hidden}
+#employeeList .daycell:not(:disabled):active:after{content:"";position:absolute;width:18px;height:18px;border-radius:50%;background:#818cf855;animation:rippleWave .55s ease-out}
+#statusModal,#employeeModal,#editModal{animation:modalBackdrop .2s ease-out both}
+#statusModal button,#employeeModal button,#editModal button{transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .18s}
+#statusModal button:not(:disabled):hover,#employeeModal button:not(:disabled):hover,#editModal button:not(:disabled):hover{transform:translateY(-2px) scale(1.015)}
+#toast:not(.hidden){animation:toastIn .32s cubic-bezier(.2,.8,.2,1) both}
+#addEmployee:hover,#scheduleAddEmployee:hover{animation:floatBadge 1s ease-in-out infinite}
+#monthlyScheduleTable td button{transition:transform .16s,box-shadow .16s}
+#monthlyScheduleTable td button:hover{transform:scale(1.04)}
+section:not(.hidden){animation:navSlide .3s ease-out both}
+@media(hover:none){
+ #employeeList>.card:hover{transform:none}
+ button:not(:disabled):active{filter:brightness(.97)}
+}
+@media(prefers-reduced-motion:reduce){
+ body:before,#pwaInstall,#pwaInstallHeader,#sync,#minsalEmployeeChooser,header .rounded-xl.bg-indigo-600:first-child{animation:none!important}
+ #employeeList .daycell,#employeeList>.card,button{transition:none!important}
+}
+
 </style>
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-800">
