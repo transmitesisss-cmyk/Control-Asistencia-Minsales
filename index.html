@@ -197,7 +197,11 @@ function buildShiftWhatsAppMessage(empId,date){
  };
  const start=shift?.kind==='shift'&&shift.startTime?format12h(shift.startTime):'No registrado';
  const end=shift?.kind==='shift'&&shift.endTime?format12h(shift.endTime):'No registrado';
- return `Nombre: ${employee?.name||'Personal'}\\nEn turno de: ${start} hasta ${end}`;
+ const hourInElSalvador=Number(new Intl.DateTimeFormat('en-US',{
+  timeZone:'America/El_Salvador',hour:'2-digit',hourCycle:'h23'
+ }).format(new Date()));
+ const greeting=hourInElSalvador<12?'Buenos días':'Buenas tardes';
+ return `${greeting}\nNombre: ${employee?.name||'Personal'}\nEn turno de: ${start} hasta ${end}`;
 }
 $('whatsAppNo').onclick=()=>{$('whatsAppNoticeModal').classList.add('hidden');pendingWhatsAppMessage=''};
 $('whatsAppYes').onclick=async()=>{
