@@ -149,6 +149,11 @@ button:disabled{cursor:not-allowed;opacity:.58}
  <div class="min-w-0"><p class="text-sm font-extrabold text-indigo-900">🔔 Recordatorio de entrada</p><p id="reminderStatus" class="mt-0.5 text-xs text-slate-600">Recibe un aviso cuando llegue la hora de tu turno.</p></div>
  <button id="enableReminders" type="button" class="shrink-0 rounded-xl bg-indigo-600 px-3 py-2.5 text-xs font-bold text-white">Activar avisos</button>
 </div>
+<div id="adminNotificationTestPanel" class="hidden mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+ <div class="flex items-start gap-2"><span class="text-xl">🧪</span><div class="min-w-0"><p class="text-sm font-extrabold text-amber-950">Pruebas de notificaciones · Administración</p><p id="adminNotificationTestStatus" class="mt-0.5 text-xs text-amber-900">Comprueba los permisos y envía una notificación inmediata a este dispositivo.</p></div></div>
+ <div class="mt-3 flex flex-wrap gap-2"><button id="checkNotificationPermission" type="button" class="rounded-xl border border-amber-300 bg-white px-3 py-2.5 text-xs font-bold text-amber-950">Comprobar / activar permiso</button><button id="sendTestNotification" type="button" class="rounded-xl bg-amber-600 px-3 py-2.5 text-xs font-bold text-white">Enviar notificación de prueba</button></div>
+ <p class="mt-2 text-[10px] text-amber-800">La prueba solo se envía al navegador o dispositivo donde está iniciada esta sesión de administrador.</p>
+</div>
 
 <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span class="rounded-lg bg-emerald-100 px-2 py-1 text-emerald-800">✓ Asistió</span><span class="rounded-lg bg-sky-100 px-2 py-1 text-sky-800">L Libre</span><span class="rounded-lg bg-rose-100 px-2 py-1 text-rose-800">X Faltó</span><span class="rounded-lg bg-violet-100 px-2 py-1 text-violet-800">I Incapacidad</span><span class="rounded-lg bg-amber-100 px-2 py-1 text-amber-800">P Permiso</span><span class="rounded-lg bg-slate-100 px-2 py-1 text-slate-600">— Pendiente</span></div></div>
 <div id="minsalEmployeeChooser" class="hidden mb-3 rounded-xl border border-indigo-200 bg-indigo-50 p-3">
@@ -351,6 +356,36 @@ function checkEntryReminders(){
  });
 }
 $('enableReminders')?.addEventListener('click',enableEntryReminders);
+function notificationPermissionLabel(){
+ if(!('Notification' in window))return 'Este navegador no admite notificaciones.';
+ return Notification.permission==='granted'?'Permiso concedido ✓':Notification.permission==='denied'?'Permiso bloqueado. Actívalo en los ajustes del navegador.':'Permiso aún no concedido.';
+}
+function updateAdminNotificationTestStatus(message){
+ const el=$('adminNotificationTestStatus');if(el)el.textContent=message||notificationPermissionLabel();
+}
+$('checkNotificationPermission')?.addEventListener('click',async()=>{
+ if(role!=='admin')return;
+ if(!('Notification' in window)){updateAdminNotificationTestStatus('Este navegador no admite notificaciones.');toast('Navegador incompatible');return;}
+ try{
+  const permission=Notification.permission==='granted'?'granted':await Notification.requestPermission();
+  updateAdminNotificationTestStatus(permission==='granted'?'Permiso concedido ✓. Ya puedes enviar una prueba.':permission==='denied'?'Permiso denegado. Habilítalo desde los ajustes del sitio en el navegador.':'No se concedió el permiso.');
+  toast(permission==='granted'?'Permiso de notificaciones concedido':'Permiso no concedido');
+ }catch(err){console.error('Prueba de permiso:',err);updateAdminNotificationTestStatus('No se pudo consultar el permiso: '+(err.message||err));}
+});
+$('sendTestNotification')?.addEventListener('click',()=>{
+ if(role!=='admin')return;
+ if(!('Notification' in window)){updateAdminNotificationTestStatus('Este navegador no admite notificaciones.');toast('Navegador incompatible');return;}
+ if(Notification.permission!=='granted'){updateAdminNotificationTestStatus('Primero pulsa “Comprobar / activar permiso” y concede el permiso.');toast('Primero concede el permiso');return;}
+ try{
+  const n=new Notification('Prueba de notificación',{
+   body:'¡Funciona! El dispositivo puede mostrar avisos de Control de Asistencia Minsales.',
+   icon:'./icons/icon-192.png',tag:'admin-test-'+Date.now(),renotify:true
+  });
+  n.onclick=()=>{window.focus();n.close();};
+  updateAdminNotificationTestStatus('Prueba enviada correctamente a este dispositivo. '+notificationPermissionLabel());
+  toast('Notificación de prueba enviada');
+ }catch(err){console.error('Notificación de prueba:',err);updateAdminNotificationTestStatus('No se pudo enviar la prueba: '+(err.message||err));toast('Falló la notificación de prueba');}
+});
 updateReminderPanel();
 window.setInterval(checkEntryReminders,30000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkEntryReminders();});
@@ -393,7 +428,7 @@ $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginBt
 onAuthStateChanged(auth,u=>{user=u;if(!u){if(unsubEmp)unsubEmp();if(unsubAtt)unsubAtt();if(autoCloseTimer){clearInterval(autoCloseTimer);autoCloseTimer=null;}$('app').classList.add('hidden');$('login').classList.remove('hidden');return}role=USERS[u.uid];if(!role){$('login').classList.remove('hidden');$('app').classList.add('hidden');$('loginError').textContent='Acceso rechazado por la aplicación.\nCódigo: app/role-not-configured\nDetalle: la cuenta sí inició sesión en Firebase, pero su UID no aparece en el objeto USERS del HTML. No cambies la contraseña; verifica el UID y el rol configurado.';$('loginError').classList.remove('hidden');signOut(auth).catch(err=>console.error('No se pudo cerrar sesión sin rol:',err));return}$('login').classList.add('hidden');$('app').classList.remove('hidden');const accountEmail=String(u.email||'').trim().toLowerCase();
 const personalizedTitle=accountEmail==='carlosmarcenaro64@gmail.com'?'Señor Carlos':accountEmail==='krissia.rosa@isss.gob.sv'?'Jefa Krissia':'';
 $('roleLabel').textContent=personalizedTitle|| (role==='admin'?'Administración':role==='supervisor'?'Supervisor automático':'Acceso Minsales');
-if(personalizedTitle){$('welcomeName').textContent=personalizedTitle;}$('adminPeriodControls').classList.toggle('hidden',role!=='admin');$('minsalInfo').classList.toggle('hidden',role!=='minsal');$('minsalInfo').textContent=role==='minsal'?'Vista semanal. Solo puedes registrar la fecha de hoy dentro de la ventana de tu horario: 60 minutos antes y hasta 30 minutos después de la entrada.':'Supervisor automático: mantiene esta página abierta en la PC dedicada. Después de las 7:00 p. m. registra X solo donde no existe marcación.';$('addEmployee').classList.toggle('hidden',role!=='admin');$('tabReport').classList.toggle('hidden',role!=='admin');$('tabSchedules').classList.toggle('hidden',role!=='admin');$('tabGps').classList.toggle('hidden',role!=='admin');$('mainNav').classList.toggle('grid-cols-4',role==='admin');$('mainNav').classList.toggle('grid-cols-2',role==='supervisor');$('mainNav').classList.toggle('grid-cols-1',role==='minsal');$('reportView').classList.add('hidden');$('gpsView').classList.add('hidden');$('scheduleManagerView').classList.add('hidden');$('attendanceView').classList.remove('hidden');startListeners();
+if(personalizedTitle){$('welcomeName').textContent=personalizedTitle;}$('adminPeriodControls').classList.toggle('hidden',role!=='admin');$('adminNotificationTestPanel').classList.toggle('hidden',role!=='admin');$('minsalInfo').classList.toggle('hidden',role!=='minsal');$('minsalInfo').textContent=role==='minsal'?'Vista semanal. Solo puedes registrar la fecha de hoy dentro de la ventana de tu horario: 60 minutos antes y hasta 30 minutos después de la entrada.':'Supervisor automático: mantiene esta página abierta en la PC dedicada. Después de las 7:00 p. m. registra X solo donde no existe marcación.';$('addEmployee').classList.toggle('hidden',role!=='admin');$('tabReport').classList.toggle('hidden',role!=='admin');$('tabSchedules').classList.toggle('hidden',role!=='admin');$('tabGps').classList.toggle('hidden',role!=='admin');$('mainNav').classList.toggle('grid-cols-4',role==='admin');$('mainNav').classList.toggle('grid-cols-2',role==='supervisor');$('mainNav').classList.toggle('grid-cols-1',role==='minsal');$('reportView').classList.add('hidden');$('gpsView').classList.add('hidden');$('scheduleManagerView').classList.add('hidden');$('attendanceView').classList.remove('hidden');startListeners();
 if(role==='minsal'){
  // Solicitud puntual al iniciar sesión; no activa seguimiento continuo.
  getCurrentGpsPosition().then(pos=>{
