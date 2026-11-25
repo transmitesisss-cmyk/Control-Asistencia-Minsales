@@ -301,6 +301,31 @@ const USERS={pv63hlYkYSRmXdM4ei9qgBhdWd83:'minsal',VGqx0YRg33T40eUCDQvfT19X4Bg1:
 const STATUS={'✓':{name:'Asistió',cls:'bg-emerald-100 text-emerald-800 border-emerald-300'},L:{name:'Libre',cls:'bg-sky-100 text-sky-800 border-sky-300'},X:{name:'Faltó',cls:'bg-rose-100 text-rose-800 border-rose-300'},I:{name:'Incapacidad',cls:'bg-violet-100 text-violet-800 border-violet-300'},P:{name:'Permiso',cls:'bg-amber-100 text-amber-800 border-amber-300'},'-':{name:'Pendiente',cls:'bg-slate-100 text-slate-500 border-slate-200'}};
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
 let user=null,role=null,employees=[],attendance={},schedules={},unsubEmp=null,unsubAtt=null,unsubSchedules=null,scheduleTarget=null,periodDate=new Date(),mode='week',selected=null,editTarget=null,selectedStatus=null,editingStatus=null,autoCloseBusy=false,autoCloseTimer=null,employeesLoaded=false,attendanceLoaded=false,schedulesLoaded=false;
+window.__scheduleImportBridge={
+ get role(){return role},
+ get employees(){return employees},
+ async save(data,replaceExisting){
+  if(role!=='admin')throw new Error('Solo un administrador puede guardar horarios.');
+  let saved=0,skipped=0,failed=0;
+  const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9 ]/gi,' ').replace(/\s+/g,' ').trim().toUpperCase();
+  const staffByName=new Map(employees.map(e=>[norm(e.name),e]));
+  const catalog={'0018':{kind:'shift',startTime:'06:00',endTime:'14:00',hours:8},'0552':{kind:'shift',startTime:'18:00',endTime:'06:00',hours:12},'0302':{kind:'shift',startTime:'10:00',endTime:'18:00',hours:8},'0210':{kind:'shift',startTime:'08:00',endTime:'16:00',hours:8},'0138':{kind:'shift',startTime:'07:00',endTime:'15:00',hours:8},'LIBRE':{kind:'off',startTime:null,endTime:null,hours:0},'VAC':{kind:'vacation',startTime:null,endTime:null,hours:8},'ASUETO':{kind:'holiday',startTime:null,endTime:null,hours:8}};
+  const [year,month]=data.month.split('-').map(Number);
+  for(const importedEmp of data.employees){
+   const emp=staffByName.get(norm(importedEmp.name));
+   if(!emp){failed+=importedEmp.days.length;continue;}
+   for(const day of importedEmp.days){
+    const code=String(day.code||'').toUpperCase(),cfg=catalog[code];
+    if(!cfg){skipped++;continue;}
+    const date=year+'-'+String(month).padStart(2,'0')+'-'+String(day.day).padStart(2,'0'),id=date+'_'+emp.id;
+    if(schedules[id]&&!replaceExisting){skipped++;continue;}
+    try{await setDoc(doc(db,...ROOT,'daily_schedules',id),{date,employeeId:emp.id,employeeName:emp.name,kind:cfg.kind,startTime:cfg.startTime,endTime:cfg.endTime,shiftCode:code,scheduledHours:cfg.hours,source:'program_report_import',importedAt:serverTimestamp(),updatedAt:serverTimestamp(),updatedBy:user.uid},{merge:true});saved++;}
+    catch(err){failed++;console.error('Importación de horario fallida',date,emp.name,err);}
+   }
+  }
+  return {saved,skipped,failed};
+ }
+};
 const $=id=>document.getElementById(id);
 const LAST_REPORT_KEY='minsal_last_report_name_v1';
 const LAST_REPORT_EMPLOYEE_ID_KEY='minsal_last_report_employee_id_v1';
@@ -1041,7 +1066,7 @@ if('serviceWorker' in navigator && location.protocol==='https:'){
  const modal=$i('scheduleImportModal'); if(!modal)return;
  const open=()=>{modal.classList.remove('hidden');$i('scheduleImportMonth').value=$i('scheduleMonth')?.value||new Date().toISOString().slice(0,7)};
  const close=()=>modal.classList.add('hidden');
- $i('openScheduleImport')?.addEventListener('click',()=>{if(role!=='admin'){toast('Solo el administrador puede importar horarios');return;}open();});
+ $i('openScheduleImport')?.addEventListener('click',()=>{if(window.__scheduleImportBridge?.role!=='admin'){toast('Solo el administrador puede importar horarios');return;}open();});
  $i('closeScheduleImport').onclick=close;$i('cancelScheduleImport').onclick=close;
  function renderGeminiSchedule(data){
   const section=$i('scheduleReadableReport'),body=$i('scheduleReadableReportBody');
@@ -1217,7 +1242,7 @@ if('serviceWorker' in navigator && location.protocol==='https:'){
   try{
    const raw=$i('scheduleReportInput').value.trim();if(!raw)throw new Error('Primero pega el reporte o carga el archivo TXT.');
    const data=parseProgramReport(raw);importedScheduleData=data;renderGeminiSchedule(data);
-   const staffByName=new Map(employees.map(e=>[normalizePersonName(e.name),e]));
+   const staffByName=new Map(window.__scheduleImportBridge.employees.map(e=>[normalizePersonName(e.name),e]));
    const unmatched=data.employees.filter(e=>!staffByName.has(normalizePersonName(e.name)));
    const pending=data.employees.reduce((n,e)=>n+e.days.filter(d=>!d.code||d.code==='-'||d.type==='REVISAR').length,0);
    const all=data.employees.flatMap(e=>e.days);
@@ -1225,39 +1250,22 @@ if('serviceWorker' in navigator && location.protocol==='https:'){
    $i('ocrShifts').textContent=all.filter(d=>['0018','0552','0302','0210','0138'].includes(d.code)).length;
    $i('ocrStates').textContent=all.filter(d=>['LIBRE','VAC','ASUETO'].includes(d.code)).length;
    $i('scheduleImportBadge').textContent='Reporte procesado';$i('scheduleImportBadge').className='rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-bold text-emerald-700';
-   $i('saveImportedSchedules').disabled=unmatched.length>0||pending>0||role!=='admin';
-   $i('scheduleImportStatus').textContent='Reporte procesado: '+data.employees.length+' empleados, '+all.length+' días. '+(unmatched.length?'No coinciden en el personal: '+unmatched.map(e=>e.name).join(', ')+'. ':'')+(pending?pending+' días pendientes de revisión. ':'')+(role!=='admin'?'Solo un administrador puede guardar. ':'')+'No se ha guardado nada todavía.';
+   $i('saveImportedSchedules').disabled=unmatched.length>0||pending>0||window.__scheduleImportBridge?.role!=='admin';
+   $i('scheduleImportStatus').textContent='Reporte procesado: '+data.employees.length+' empleados, '+all.length+' días. '+(unmatched.length?'No coinciden en el personal: '+unmatched.map(e=>e.name).join(', ')+'. ':'')+(pending?pending+' días pendientes de revisión. ':'')+(window.__scheduleImportBridge?.role!=='admin'?'Solo un administrador puede guardar. ':'')+'No se ha guardado nada todavía.';
   }catch(err){$i('scheduleImportBadge').textContent='Error';$i('scheduleImportStatus').textContent=err.message;}
  };
 
  $i('saveImportedSchedules').onclick=async()=>{
-  if(role!=='admin'||!importedScheduleData)return;
+  if(window.__scheduleImportBridge?.role!=='admin'||!importedScheduleData)return;
   const btn=$i('saveImportedSchedules');btn.disabled=true;btn.textContent='Guardando…';
-  let saved=0,skipped=0,failed=0;
   try{
-   const staffByName=new Map(employees.map(e=>[normalizePersonName(e.name),e]));
-   const [year,month]=importedScheduleData.month.split('-').map(Number);
-   for(const importedEmp of importedScheduleData.employees){
-    const emp=staffByName.get(normalizePersonName(importedEmp.name));
-    if(!emp){failed+=importedEmp.days.length;continue;}
-    for(const day of importedEmp.days){
-     const code=String(day.code||'').toUpperCase(),cfg=scheduleCatalog[code];
-     if(!cfg){skipped++;continue;}
-     const date=`${year}-${String(month).padStart(2,'0')}-${String(day.day).padStart(2,'0')}`;
-     const id=`${date}_${emp.id}`,ref=doc(db,...ROOT,'daily_schedules',id);
-     if(schedules[id]&&!$('replaceImportedSchedules').checked){skipped++;continue;}
-     try{
-      await setDoc(ref,{date,employeeId:emp.id,employeeName:emp.name,kind:cfg.kind,startTime:cfg.startTime,endTime:cfg.endTime,shiftCode:code,scheduledHours:cfg.hours,source:'program_report_import',importedAt:serverTimestamp(),updatedAt:serverTimestamp(),updatedBy:user.uid},{merge:true});
-      saved++;
-     }catch(err){failed++;console.error('No se pudo importar horario',date,emp.name,err);}
-    }
-   }
-   $i('scheduleImportStatus').textContent=`Importación terminada. Guardados: ${saved}. Omitidos (ya existían o pendientes): ${skipped}. Errores: ${failed}.`;
-   $i('scheduleImportBadge').textContent=failed?'Importación parcial':'Guardado completado';
-   $i('scheduleImportBadge').className='rounded-full '+(failed?'bg-amber-100 text-amber-800':'bg-emerald-100 text-emerald-700')+' px-3 py-1 text-[10px] font-bold';
-   if(saved)toast(`${saved} horarios guardados en Firebase`);
+   const result=await window.__scheduleImportBridge.save(importedScheduleData,$('replaceImportedSchedules').checked);
+   $i('scheduleImportStatus').textContent=`Importación terminada. Guardados: ${result.saved}. Omitidos: ${result.skipped}. Errores: ${result.failed}.`;
+   $i('scheduleImportBadge').textContent=result.failed?'Importación parcial':'Guardado completado';
+   $i('scheduleImportBadge').className='rounded-full '+(result.failed?'bg-amber-100 text-amber-800':'bg-emerald-100 text-emerald-700')+' px-3 py-1 text-[10px] font-bold';
+   if(result.saved)toast(`${result.saved} horarios guardados en Firebase`);
    renderScheduleManager();
-  }catch(err){showFirebaseError(err,'No se pudo completar la importación')}
+  }catch(err){$i('scheduleImportStatus').textContent='No se pudo guardar: '+err.message;}
   finally{btn.disabled=false;btn.textContent='Guardar horarios en Firebase'}
  };
 
