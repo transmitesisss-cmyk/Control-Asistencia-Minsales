@@ -134,7 +134,20 @@ button:disabled{cursor:not-allowed;opacity:.58}
 }
 
 </style>
-</head>
+<style>
+.celestial{position:relative;overflow:hidden;isolation:isolate;animation:celestialFloat 3.2s ease-in-out infinite}
+.celestial.sunrise{background:linear-gradient(160deg,#f59e0b55,#f9731655,#fff7ed22)}
+.celestial.afternoon{background:linear-gradient(160deg,#fb923c55,#fbbf2455,#7c3aed33)}
+.celestial.night{background:linear-gradient(160deg,#312e8155,#0f172a88,#1e3a8a55)}
+.celestial.sunrise:before,.celestial.afternoon:before{content:"";position:absolute;width:48px;height:48px;border-radius:50%;background:#facc15;box-shadow:0 0 24px #fbbf24;animation:sunPulse 2.4s ease-in-out infinite;z-index:-1}
+.celestial.afternoon:before{background:#fb923c;box-shadow:0 0 28px #fb923c;transform:translateY(8px)}
+.celestial.night:before{content:"";position:absolute;width:44px;height:44px;border-radius:50%;background:#f8fafc;box-shadow:0 0 22px #c7d2fe;transform:translate(5px,-2px);z-index:-1}
+.celestial.night:after{content:"✦  ·  ✧";position:absolute;inset:8px;color:#e0e7ff;font-size:17px;letter-spacing:8px;animation:starsTwinkle 1.8s ease-in-out infinite alternate}
+@keyframes celestialFloat{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-7px) rotate(2deg)}}
+@keyframes sunPulse{0%,100%{scale:1;filter:brightness(1)}50%{scale:1.12;filter:brightness(1.2)}}
+@keyframes starsTwinkle{from{opacity:.35}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){.celestial,.celestial:before,.celestial:after{animation:none!important}}
+</style></head>
 <body class="min-h-screen bg-slate-50 text-slate-800">
 <section id="login" class="fixed inset-0 z-50 grid place-items-center bg-slate-100 p-5"><div class="card w-full max-w-sm p-7">
 <div class="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-indigo-600 text-2xl font-extrabold text-white">M</div><h1 class="text-center text-xl font-extrabold">Control de Asistencia</h1><p class="mt-1 text-center text-sm text-slate-500">Minsales · Acceso autorizado</p>
@@ -198,7 +211,17 @@ button:disabled{cursor:not-allowed;opacity:.58}
   </div>
  </div>
 </section>
-<section id="reportView" class="hidden space-y-4"><div class="card p-4"><h2 class="font-extrabold">Reporte de asistencia</h2><div class="mt-3 grid grid-cols-2 gap-2"><label class="text-xs font-bold text-slate-600">Período<select id="reportMode" class="mt-1 w-full rounded-xl border border-slate-300 bg-white p-2 text-sm"><option value="month">Mensual</option><option value="week">Semanal</option></select></label><label class="text-xs font-bold text-slate-600">Mes de referencia<input id="reportMonth" type="month" class="mt-1 w-full rounded-xl border border-slate-300 p-2 text-sm"></label></div><p id="reportPeriod" class="mb-3 mt-2 text-xs text-slate-500"></p><div id="stats" class="grid grid-cols-2 gap-2 sm:grid-cols-5"></div><textarea id="reportText" readonly rows="12" class="mt-4 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm"></textarea><div class="mt-3 grid grid-cols-2 gap-2"><button id="copyReport" class="rounded-xl bg-indigo-600 p-3 text-sm font-bold text-white">Copiar</button><button id="shareReport" class="rounded-xl bg-emerald-600 p-3 text-sm font-bold text-white">WhatsApp</button></div></div></section>
+<section id="reportView" class="hidden space-y-4"><div class="card overflow-hidden p-4 sm:p-5"><div class="rounded-2xl bg-gradient-to-r from-indigo-700 via-blue-700 to-sky-600 p-4 text-white shadow-lg"><p class="text-[10px] font-bold uppercase tracking-[.22em] text-blue-100">Centro de reportes</p><h2 class="mt-1 text-xl font-extrabold">Reporte de asistencia</h2><p class="mt-1 text-xs text-blue-100">Selecciona el período que necesitas y genera el resumen.</p></div><div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+<label class="text-xs font-bold text-slate-600">Tipo de reporte
+<select id="reportMode" class="mt-1 w-full rounded-xl border border-slate-300 bg-white p-3 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
+<option value="week">📅 Semanal</option><option value="month">🗓️ Mensual</option><option value="range">↔️ Por rango de fechas</option>
+</select></label>
+<div id="reportWeekWrap" class="rounded-xl border border-indigo-100 bg-indigo-50/70 p-3"><label class="text-xs font-bold text-indigo-900">Escoger semana<input id="reportWeek" type="week" class="mt-1 w-full rounded-lg border border-indigo-200 bg-white p-2.5 text-sm"></label><p class="mt-1 text-[10px] text-indigo-700">Selecciona cualquier semana del año.</p></div>
+<div id="reportMonthWrap" class="hidden rounded-xl border border-indigo-100 bg-indigo-50/70 p-3"><label class="text-xs font-bold text-indigo-900">Escoger mes<input id="reportMonth" type="month" class="mt-1 w-full rounded-lg border border-indigo-200 bg-white p-2.5 text-sm"></label></div>
+<div id="reportRangeWrap" class="hidden grid grid-cols-1 gap-2 rounded-xl border border-indigo-100 bg-indigo-50/70 p-3 sm:grid-cols-2">
+<label class="text-xs font-bold text-indigo-900">Fecha de inicio<input id="reportStart" type="date" class="mt-1 w-full rounded-lg border border-indigo-200 bg-white p-2.5 text-sm"></label>
+<label class="text-xs font-bold text-indigo-900">Fecha de finalización<input id="reportEnd" type="date" class="mt-1 w-full rounded-lg border border-indigo-200 bg-white p-2.5 text-sm"></label>
+</div></div><p id="reportPeriod" class="mb-3 mt-3 rounded-xl bg-slate-50 p-3 text-xs font-semibold text-slate-600"></p><div id="stats" class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5"></div><div class="mt-4 flex items-center justify-between"><p class="text-xs font-extrabold uppercase tracking-wider text-slate-500">Vista previa del reporte</p><span class="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold text-emerald-800">Listo para compartir</span></div><textarea id="reportText" readonly rows="14" class="mt-2 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-3 text-sm leading-relaxed shadow-inner"></textarea><div class="mt-3 grid grid-cols-2 gap-2"><button id="copyReport" class="rounded-xl bg-indigo-600 p-3 text-sm font-bold text-white">Copiar</button><button id="shareReport" class="rounded-xl bg-emerald-600 p-3 text-sm font-bold text-white">WhatsApp</button></div></div></section>
 <section id="gpsView" class="hidden space-y-4">
  <div class="card space-y-3 p-4">
   <div><h2 class="text-lg font-extrabold">Control de ubicación GPS</h2><p class="text-xs text-slate-500">Historial de marcaciones “Asistió” con ubicación registrada. Zona autorizada: radio de 50 metros del Hospital Médico Quirúrgico.</p></div>
@@ -216,7 +239,7 @@ button:disabled{cursor:not-allowed;opacity:.58}
 <div id="editModal" class="hidden fixed inset-0 z-40 grid place-items-center bg-slate-950/50 p-4"><div class="card w-full max-w-sm p-5"><h3 class="font-extrabold">Corregir marcación</h3><p id="editSubtitle" class="mt-1 text-sm text-slate-500"></p><div id="editOptions" class="mt-4 grid grid-cols-2 gap-2"></div><button id="resetAttendance" class="mt-4 w-full rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-bold text-rose-700">Reiniciar esta casilla (dejar pendiente)</button><div class="mt-3 flex gap-2"><button id="cancelEdit" class="flex-1 rounded-xl bg-slate-100 p-3 font-bold">Cancelar</button><button id="saveEdit" class="flex-1 rounded-xl bg-indigo-600 p-3 font-bold text-white">Guardar corrección</button></div></div></div>
 <div id="scheduleModal" class="hidden fixed inset-0 z-40 grid place-items-center bg-slate-950/50 p-4"><div class="card w-full max-w-sm p-5"><h3 class="font-extrabold">Configurar horario</h3><p id="scheduleSubtitle" class="mt-1 text-sm text-slate-500"></p><label class="mt-4 flex items-center gap-2 text-sm font-semibold"><input id="scheduleOff" type="checkbox" class="h-4 w-4"> Día libre</label><div id="scheduleTimes" class="mt-3 grid grid-cols-2 gap-3"><label class="text-xs font-bold text-slate-600">Entrada<input id="scheduleStart" type="time" class="mt-1 w-full rounded-xl border border-slate-300 p-3 text-sm"></label><label class="text-xs font-bold text-slate-600">Salida<input id="scheduleEnd" type="time" class="mt-1 w-full rounded-xl border border-slate-300 p-3 text-sm"></label></div><p class="mt-3 text-[11px] text-slate-500">La ventana de marcación será desde 60 minutos antes hasta 30 minutos después de la hora de entrada.</p><div class="mt-4 flex gap-2"><button id="cancelSchedule" class="flex-1 rounded-xl bg-slate-100 p-3 font-bold">Cancelar</button><button id="saveSchedule" class="flex-1 rounded-xl bg-indigo-600 p-3 font-bold text-white">Guardar horario</button></div></div></div><div id="supervisorExitModal" class="hidden fixed inset-0 z-[80] grid place-items-center bg-slate-950/70 p-4"><form id="supervisorExitForm" class="card w-full max-w-sm p-5"><div class="mb-2 grid h-11 w-11 place-items-center rounded-xl bg-amber-100 text-xl">🔒</div><h3 class="font-extrabold">Proteger sesión del supervisor</h3><p class="mt-1 text-sm text-slate-500">Para cerrar la sesión del supervisor debes confirmar su contraseña.</p><label for="supervisorExitPassword" class="mt-4 block text-xs font-bold text-slate-600">Contraseña del supervisor</label><input id="supervisorExitPassword" type="password" required autocomplete="current-password" class="mt-1 w-full rounded-xl border border-slate-300 p-3" placeholder="Introduce la contraseña"><p id="supervisorExitError" class="mt-2 hidden text-sm text-rose-600"></p><div class="mt-4 flex gap-2"><button type="button" id="cancelSupervisorExit" class="flex-1 rounded-xl bg-slate-100 p-3 font-bold">Cancelar</button><button id="confirmSupervisorExit" class="flex-1 rounded-xl bg-rose-600 p-3 font-bold text-white">Confirmar salida</button></div></form></div><div id="welcomeSplash" class="fixed inset-0 z-[200] flex items-center justify-center bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 p-6 text-center text-white transition-opacity duration-500">
  <div class="max-w-sm">
-  <div class="mx-auto mb-6 grid h-20 w-20 place-items-center rounded-3xl border border-white/20 bg-white/10 text-4xl shadow-2xl">☀️</div>
+  <div id="welcomeCelestial" class="celestial mx-auto mb-6 grid h-24 w-24 place-items-center rounded-3xl border border-white/20 bg-white/10 text-5xl shadow-2xl" aria-hidden="true">☀️</div>
   <p class="text-xs font-bold uppercase tracking-[0.25em] text-indigo-200">Control de Asistencia Minsales</p>
   <h1 id="welcomeGreeting" class="mt-4 text-3xl font-extrabold">Buenos días</h1>
   <p id="welcomeName" class="mt-2 text-xl font-semibold text-indigo-100"></p>
@@ -266,11 +289,14 @@ $('minsalEmployeeSelect')?.addEventListener('change',()=>{
  $('minsalEmployeeMenu').classList.add('hidden');
  $('toggleMinsalEmployees').textContent='Cambiar ▾';
 });
-function elSalvadorGreeting(){
- const parts=new Intl.DateTimeFormat('es-SV',{timeZone:'America/El_Salvador',hour:'numeric',hour12:true}).formatToParts(new Date());
- const period=(parts.find(x=>x.type==='dayPeriod')?.value||'').toLowerCase();
- return period.includes('a')?'Buenos días':'Buenas tardes';
+function elSalvadorGreetingDetails(){
+ const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/El_Salvador',hour:'2-digit',hourCycle:'h23'}).formatToParts(new Date());
+ const hour=Number(parts.find(x=>x.type==='hour')?.value||0);
+ if(hour>=5&&hour<12)return {text:'Buenos días',icon:'☀️',scene:'sunrise'};
+ if(hour>=12&&hour<19)return {text:'Buenas tardes',icon:'🌇',scene:'afternoon'};
+ return {text:'Buenas noches',icon:'🌙',scene:'night'};
 }
+function elSalvadorGreeting(){return elSalvadorGreetingDetails().text;}
 function firstNameAndSurname(fullName){
  const parts=String(fullName||'').trim().split(/\\s+/).filter(Boolean);
  return parts.length>=2?`${parts[0]} ${parts[1]}`:(parts[0]||'');
@@ -279,7 +305,10 @@ function showWelcomeSplash(){
  const splash=$('welcomeSplash');if(!splash)return;
  let lastName='';
  try{lastName=localStorage.getItem(LAST_REPORT_KEY)||'';}catch(e){}
- $('welcomeGreeting').textContent=elSalvadorGreeting();
+ const greeting=elSalvadorGreetingDetails();
+ $('welcomeGreeting').textContent=greeting.text;
+ const celestial=$('welcomeCelestial');
+ if(celestial){celestial.textContent=greeting.icon;celestial.classList.add(greeting.scene);}
  $('welcomeName').textContent=firstNameAndSurname(lastName);
  window.setTimeout(()=>{splash.classList.add('opacity-0');window.setTimeout(()=>splash.remove(),550);},2200);
 }
@@ -470,8 +499,7 @@ function buildShiftWhatsAppMessage(empId,date){
   hour:'numeric',
   hour12:true
  }).formatToParts(new Date());
- const period=timeParts.find(part=>part.type==='dayPeriod')?.value?.toLowerCase()||'';
- const greeting=period.includes('a')?'Buenos días':'Buenas tardes';
+ const greeting=elSalvadorGreeting();
  return `${greeting}\nNombre: ${employee?.name||'Personal'}\nEn turno de: ${start} hasta ${end}`;
 }
 $('whatsAppNo').onclick=()=>{$('whatsAppNoticeModal').classList.add('hidden');pendingWhatsAppMessage=''};
@@ -576,7 +604,20 @@ $('scheduleMonth').value=localDate().slice(0,7);
 $('scheduleMonth').onchange=renderScheduleManager;
 $('scheduleTargetHours').oninput=renderScheduleManager;
 $('scheduleAddEmployee').onclick=()=>$('addEmployee').click();
-$('reportMode').onchange=()=>buildReport(reportDates());$('reportMonth').onchange=()=>buildReport(reportDates());
+const reportToday=localDate();
+$('reportMonth').value=reportToday.slice(0,7);
+$('reportWeek').value=isoWeekValue(parseDate(reportToday));
+$('reportStart').value=reportToday;
+$('reportEnd').value=reportToday;
+function updateReportControls(){
+ const mode=$('reportMode').value;
+ $('reportWeekWrap').classList.toggle('hidden',mode!=='week');
+ $('reportMonthWrap').classList.toggle('hidden',mode!=='month');
+ $('reportRangeWrap').classList.toggle('hidden',mode!=='range');
+ buildReport(reportDates());
+}
+$('reportMode').onchange=updateReportControls;
+['reportWeek','reportMonth','reportStart','reportEnd'].forEach(id=>$(id).onchange=()=>buildReport(reportDates()));
 function renderGpsView(){
  if(role!=='admin')return;
  const month=$('gpsMonth')?.value||localDate().slice(0,7);
@@ -600,7 +641,34 @@ function renderGpsView(){
  $('gpsStats').innerHTML=[['Dentro de zona',inside,'bg-emerald-50 text-emerald-800'],['Fuera de zona',outside,'bg-rose-50 text-rose-800'],['Precisión insuficiente',lowAccuracy,'bg-amber-50 text-amber-800'],['Sin datos GPS',noData,'bg-slate-100 text-slate-700']].map(([label,n,cls])=>`<div class="rounded-xl p-3 ${cls}"><p class="text-[10px] font-bold">${label}</p><p class="mt-1 text-2xl font-extrabold">${n}</p></div>`).join('');
  $('gpsRecords').innerHTML=rendered||'<div class="py-8 text-center"><p class="font-bold">No hay marcaciones GPS este mes</p><p class="mt-1 text-xs text-slate-500">Las marcaciones “Asistió” aparecerán aquí cuando se registren.</p></div>';
 }
-function reportDates(){const rm=$('reportMode')?.value||'month';if(rm==='week')return weekDates(periodDate);const val=$('reportMonth')?.value||localDate().slice(0,7);const [y,m]=val.split('-').map(Number);return Array.from({length:new Date(y,m,0).getDate()},(_,i)=>new Date(y,m-1,i+1,12))}
+function isoWeekValue(date){
+ const d=new Date(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()));
+ d.setUTCDate(d.getUTCDate()+4-(d.getUTCDay()||7));
+ const yearStart=new Date(Date.UTC(d.getUTCFullYear(),0,1));
+ const week=Math.ceil((((d-yearStart)/86400000)+1)/7);
+ return `${d.getUTCFullYear()}-W${String(week).padStart(2,'0')}`;
+}
+function datesFromIsoWeek(value){
+ const match=/^(\\d{4})-W(\\d{2})$/.exec(value||'');
+ if(!match)return weekDates(parseDate(localDate()));
+ const year=Number(match[1]),week=Number(match[2]);
+ const jan4=new Date(year,0,4,12),first=monday(jan4);
+ return Array.from({length:7},(_,i)=>addDays(first,(week-1)*7+i));
+}
+function reportDates(){
+ const rm=$('reportMode')?.value||'week';
+ if(rm==='week')return datesFromIsoWeek($('reportWeek')?.value||isoWeekValue(parseDate(localDate())));
+ if(rm==='month'){
+  const val=$('reportMonth')?.value||localDate().slice(0,7),[y,m]=val.split('-').map(Number);
+  return Array.from({length:new Date(y,m,0).getDate()},(_,i)=>new Date(y,m-1,i+1,12));
+ }
+ const start=$('reportStart')?.value||localDate(),end=$('reportEnd')?.value||start;
+ if(end<start){$('reportPeriod').textContent='La fecha final no puede ser anterior a la fecha inicial.';return []}
+ const [sy,sm,sd]=start.split('-').map(Number),[ey,em,ed]=end.split('-').map(Number);
+ const first=new Date(sy,sm-1,sd,12),last=new Date(ey,em-1,ed,12),days=[];
+ for(let d=new Date(first);d<=last&&days.length<366;d=addDays(d,1))days.push(new Date(d));
+ return days;
+}
 function hoursBetween(a,b){const [ah,am]=a.split(':').map(Number),[bh,bm]=b.split(':').map(Number);let n=bh*60+bm-(ah*60+am);if(n<=0)n+=1440;return n/60}
 function scheduleHours(start,end){
  if(!start||!end)return 0;
@@ -661,6 +729,7 @@ function reportDate(dateKey){
  return `${d}/${m}/${y}`;
 }
 function buildReport(ds){
+ if(!ds||!ds.length){$('stats').innerHTML='';$('reportText').value='Selecciona un período válido para generar el reporte.';return}
  let totalShifts=0,totalOff=0,totalHours=0,totalMarks=0;
  const details=[];
  const statusNames={'✓':'Asistió','L':'Libre','X':'Faltó','I':'Incapacidad','P':'Permiso'};
@@ -701,14 +770,15 @@ function buildReport(ds){
   timeZone:'America/El_Salvador',day:'2-digit',month:'2-digit',year:'numeric',
   hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true
  }).format(new Date());
- const weekly=$('reportMode')?.value==='week';
- const period=weekly
-  ?`${fmt(ds[0])} — ${fmt(ds[ds.length-1])}`
-  :new Intl.DateTimeFormat('es-SV',{timeZone:'America/El_Salvador',month:'long',year:'numeric'}).format(ds[0]);
+ const reportMode=$('reportMode')?.value||'week';
+ const period=reportMode==='month'
+  ?new Intl.DateTimeFormat('es-SV',{timeZone:'America/El_Salvador',month:'long',year:'numeric'}).format(ds[0])
+  :`${fmt(ds[0])} — ${fmt(ds[ds.length-1])}`;
+ const reportType=reportMode==='week'?'SEMANAL':reportMode==='month'?'MENSUAL':'POR RANGO DE FECHAS';
 
  $('reportText').value=
 `📋 CONTROL DE ASISTENCIA MINSALES
-REPORTE ${weekly?'SEMANAL':'MENSUAL'}
+REPORTE ${reportType}
 Período: ${period}
 Generado: ${generated}
 
