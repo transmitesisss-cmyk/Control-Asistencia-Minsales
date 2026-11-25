@@ -255,7 +255,7 @@ const firebaseConfig={apiKey:'AIzaSyCJUpWyI0Qw3L5MRB6wra122OcagbitbcM',authDomai
 const ROOT=['artifacts','mensales-asistencia-app','public','data'];
 const USERS={pv63hlYkYSRmXdM4ei9qgBhdWd83:'minsal',VGqx0YRg33T40eUCDQvfT19X4Bg1:'admin',omz3QCdEMBesfxYjUC53ZwuZBOQ2:'admin',JsiF4oXezGMRcGzdSNfji3JIBlU2:'supervisor'};
 const STATUS={'✓':{name:'Asistió',cls:'bg-emerald-100 text-emerald-800 border-emerald-300'},L:{name:'Libre',cls:'bg-sky-100 text-sky-800 border-sky-300'},X:{name:'Faltó',cls:'bg-rose-100 text-rose-800 border-rose-300'},I:{name:'Incapacidad',cls:'bg-violet-100 text-violet-800 border-violet-300'},P:{name:'Permiso',cls:'bg-amber-100 text-amber-800 border-amber-300'},'-':{name:'Pendiente',cls:'bg-slate-100 text-slate-500 border-slate-200'}};
-const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);let user=null,role=null,employees=[],attendance={},schedules={},unsubEmp=null,unsubAtt=null,unsubSchedules=null,scheduleTarget=null,periodDate=new Date(),mode='week',selected=null,editTarget=null,selectedStatus=null,editingStatus=null,autoCloseBusy=false,autoCloseTimer=null;
+const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);let user=null,role=null,employees=[],attendance={},schedules={},unsubEmp=null,unsubAtt=null,unsubSchedules=null,scheduleTarget=null,periodDate=new Date(),mode='week',selected=null,editTarget=null,selectedStatus=null,editingStatus=null,autoCloseBusy=false,autoCloseTimer=null,employeesLoaded=false,attendanceLoaded=false,schedulesLoaded=false;
 const $=id=>document.getElementById(id);
 const LAST_REPORT_KEY='minsal_last_report_name_v1';
 const LAST_REPORT_EMPLOYEE_ID_KEY='minsal_last_report_employee_id_v1';
@@ -457,7 +457,7 @@ $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginBt
 onAuthStateChanged(auth,u=>{user=u;if(!u){if(unsubEmp)unsubEmp();if(unsubAtt)unsubAtt();if(autoCloseTimer){clearInterval(autoCloseTimer);autoCloseTimer=null;}$('app').classList.add('hidden');$('login').classList.remove('hidden');return}role=USERS[u.uid];if(!role){$('login').classList.remove('hidden');$('app').classList.add('hidden');$('loginError').textContent='Acceso rechazado por la aplicación.\nCódigo: app/role-not-configured\nDetalle: la cuenta sí inició sesión en Firebase, pero su UID no aparece en el objeto USERS del HTML. No cambies la contraseña; verifica el UID y el rol configurado.';$('loginError').classList.remove('hidden');signOut(auth).catch(err=>console.error('No se pudo cerrar sesión sin rol:',err));return}$('login').classList.add('hidden');$('app').classList.remove('hidden');const accountEmail=String(u.email||'').trim().toLowerCase();
 const personalizedTitle=accountEmail==='carlosmarcenaro64@gmail.com'?'Señor Carlos':accountEmail==='krissia.rosa@isss.gob.sv'?'Jefa Krissia':'';
 $('roleLabel').textContent=personalizedTitle|| (role==='admin'?'Administración':role==='supervisor'?'Supervisor automático':'Acceso Minsales');
-if(personalizedTitle){$('welcomeName').textContent=personalizedTitle;}$('adminPeriodControls').classList.toggle('hidden',role!=='admin');$('adminNotificationTestPanel').classList.toggle('hidden',role!=='admin');$('minsalInfo').classList.toggle('hidden',role!=='minsal');$('minsalInfo').textContent=role==='minsal'?'Vista semanal. Solo puedes registrar la fecha de hoy dentro de la ventana de tu horario: 60 minutos antes y hasta 30 minutos después de la entrada.':'Supervisor automático: mantiene esta página abierta en la PC dedicada. Después de las 7:00 p. m. registra X solo donde no existe marcación.';$('addEmployee').classList.toggle('hidden',role!=='admin');$('tabReport').classList.toggle('hidden',role!=='admin');$('tabSchedules').classList.toggle('hidden',role!=='admin');$('tabGps').classList.toggle('hidden',role!=='admin');$('mainNav').classList.toggle('grid-cols-4',role==='admin');$('mainNav').classList.toggle('grid-cols-2',role==='supervisor');$('mainNav').classList.toggle('grid-cols-1',role==='minsal');$('reportView').classList.add('hidden');$('gpsView').classList.add('hidden');$('scheduleManagerView').classList.add('hidden');$('attendanceView').classList.remove('hidden');startListeners();
+if(personalizedTitle){$('welcomeName').textContent=personalizedTitle;}$('adminPeriodControls').classList.toggle('hidden',role!=='admin');$('adminNotificationTestPanel').classList.toggle('hidden',role!=='admin');$('minsalInfo').classList.toggle('hidden',role!=='minsal');$('minsalInfo').textContent=role==='minsal'?'Vista semanal. Solo puedes registrar la fecha de hoy dentro de la ventana de tu horario: 60 minutos antes y hasta 30 minutos después de la entrada.':'Recuperación automática: al iniciar sesión revisa el día anterior y registra L/X pendientes. El supervisor también cierra el día actual después de las 7:00 p. m.';$('addEmployee').classList.toggle('hidden',role!=='admin');$('tabReport').classList.toggle('hidden',role!=='admin');$('tabSchedules').classList.toggle('hidden',role!=='admin');$('tabGps').classList.toggle('hidden',role!=='admin');$('mainNav').classList.toggle('grid-cols-4',role==='admin');$('mainNav').classList.toggle('grid-cols-2',role==='supervisor');$('mainNav').classList.toggle('grid-cols-1',role==='minsal');$('reportView').classList.add('hidden');$('gpsView').classList.add('hidden');$('scheduleManagerView').classList.add('hidden');$('attendanceView').classList.remove('hidden');startListeners();
 if(role==='minsal'){
  // Solicitud puntual al iniciar sesión; no activa seguimiento continuo.
  getCurrentGpsPosition().then(pos=>{
@@ -467,11 +467,11 @@ if(role==='minsal'){
   toast('Ubicación no disponible. Para marcar Asistió, permite el GPS en este sitio.');
  });
 }
-if(role==='supervisor'){runAutomaticClose();autoCloseTimer=setInterval(runAutomaticClose,60000)}});
+runAutomaticClose();if(role==='supervisor'){autoCloseTimer=setInterval(runAutomaticClose,60000)}});
 $('logout').onclick=()=>{if(role==='supervisor'){$('supervisorExitPassword').value='';$('supervisorExitError').classList.add('hidden');$('supervisorExitModal').classList.remove('hidden');$('supervisorExitPassword').focus()}else signOut(auth)};
 $('cancelSupervisorExit').onclick=()=>{$('supervisorExitModal').classList.add('hidden');$('supervisorExitPassword').value=''};
 $('supervisorExitForm').addEventListener('submit',async e=>{e.preventDefault();if(role!=='supervisor'||!user)return;const password=$('supervisorExitPassword').value;if(!password)return;const btn=$('confirmSupervisorExit');btn.disabled=true;btn.textContent='Verificando...';$('supervisorExitError').classList.add('hidden');try{const credential=EmailAuthProvider.credential(user.email,password);await reauthenticateWithCredential(user,credential);if(autoCloseTimer){clearInterval(autoCloseTimer);autoCloseTimer=null}await signOut(auth);$('supervisorExitModal').classList.add('hidden')}catch(err){console.error('Reautenticación supervisor:',err);$('supervisorExitError').textContent=err.code==='auth/wrong-password'||err.code==='auth/invalid-credential'?'Contraseña incorrecta. La sesión del supervisor continúa abierta.':'No se pudo verificar la contraseña. Revisa la conexión e inténtalo de nuevo.';$('supervisorExitError').classList.remove('hidden')}finally{btn.disabled=false;btn.textContent='Confirmar salida'}});
-function startListeners(){if(unsubEmp)unsubEmp();if(unsubAtt)unsubAtt();if(unsubSchedules)unsubSchedules();unsubEmp=onSnapshot(path('mensales_staff'),s=>{employees=s.docs.map(d=>({id:d.id,...d.data()})).filter(e=>e.active!==false).sort((a,b)=>(a.name||'').localeCompare(b.name||''));render();setSync('En vivo');if(role==='supervisor')runAutomaticClose()},e=>{console.error(e);setSync('Sin conexión');toast('Error leyendo personal')});unsubAtt=onSnapshot(path('daily_attendance'),s=>{attendance={};s.docs.forEach(d=>attendance[d.id]={id:d.id,...d.data()});render();if(!$('gpsView').classList.contains('hidden'))renderGpsView()},e=>{console.error(e);setSync('Sin conexión');toast('Error leyendo marcaciones')});unsubSchedules=onSnapshot(path('daily_schedules'),s=>{schedules={};s.docs.forEach(d=>schedules[d.id]={id:d.id,...d.data()});render();if(role==='supervisor')runAutomaticClose()},e=>{console.error('Error leyendo horarios para cierre automático:',e);setSync('Sin conexión');toast('Error leyendo horarios')})}
+function startListeners(){if(unsubEmp)unsubEmp();if(unsubAtt)unsubAtt();if(unsubSchedules)unsubSchedules();employeesLoaded=false;attendanceLoaded=false;schedulesLoaded=false;unsubEmp=onSnapshot(path('mensales_staff'),s=>{employees=s.docs.map(d=>({id:d.id,...d.data()})).filter(e=>e.active!==false).sort((a,b)=>(a.name||'').localeCompare(b.name||''));employeesLoaded=true;render();setSync('En vivo');runAutomaticClose()},e=>{console.error(e);setSync('Sin conexión');toast('Error leyendo personal')});unsubAtt=onSnapshot(path('daily_attendance'),s=>{attendance={};s.docs.forEach(d=>attendance[d.id]={id:d.id,...d.data()});attendanceLoaded=true;render();if(!$('gpsView').classList.contains('hidden'))renderGpsView();runAutomaticClose()},e=>{console.error(e);setSync('Sin conexión');toast('Error leyendo marcaciones')});unsubSchedules=onSnapshot(path('daily_schedules'),s=>{schedules={};s.docs.forEach(d=>schedules[d.id]={id:d.id,...d.data()});schedulesLoaded=true;render();runAutomaticClose()},e=>{console.error('Error leyendo horarios para cierre automático:',e);setSync('Sin conexión');toast('Error leyendo horarios')})}
 function datesForUI(){if(role==='minsal'){const today=parseDate(localDate());return weekDates(today)}return dateRange()}
 function render(){updateReminderPanel();checkEntryReminders();if(role==='admin'&&!$('scheduleManagerView').classList.contains('hidden'))renderScheduleManager();const ds=datesForUI();$('periodCaption').textContent=role==='admin'?(mode==='week'?'Vista semanal':'Vista mensual'):'Semana en curso';$('periodTitle').textContent=mode==='month'&&role==='admin'?new Intl.DateTimeFormat('es-SV',{month:'long',year:'numeric'}).format(periodDate):`${fmt(ds[0])} — ${fmt(ds[6])}`;$('periodTitle').classList.toggle('capitalize',true);const today=localDate();$('employeeList').innerHTML='';updateMinsalEmployeeChooser();const displayedEmployees=role==='minsal'&&selectedMinsalEmployeeId?employees.filter(e=>e.id===selectedMinsalEmployeeId):employees;if(!displayedEmployees.length){$('employeeList').innerHTML='<div class="card p-8 text-center"><p class="font-bold">No hay personal registrado</p><p class="mt-1 text-sm text-slate-500">La lista está vacía. Administración puede agregar empleados.</p></div>';buildReport(ds);return}for(const emp of displayedEmployees){const card=document.createElement('article');card.className='card p-4';let dayHtml='';for(const d of ds){const key=dateKey(d),id=`${key}_${emp.id}`,rec=attendance[id],status=rec?.status||'-',sc=schedules[id],isToday=key===today,allowed=canMark(emp.id,key)&&!rec,adminEdit=role==='admin';const label=new Intl.DateTimeFormat('es-SV',{weekday:'short'}).format(d).replace('.','');const shiftText=sc?.kind==='off'?'Libre':sc?.kind==='shift'?`${sc.startTime||'--:--'}–${sc.endTime||'--:--'}`:'Sin horario';dayHtml+=`<div class="min-w-0 text-center"><div class="mb-1 text-[10px] font-bold uppercase text-slate-500">${label}</div><div class="mb-1 text-[10px] text-slate-400">${d.getDate()}</div><button data-date="${key}" data-emp="${emp.id}" class="daycell w-full rounded-lg border py-2 text-sm font-extrabold ${STATUS[status].cls} ${isToday?'ring-2 ring-indigo-400 ring-offset-1':''} ${allowed||adminEdit||(role==='minsal'&&isToday&&!rec)?'':'cursor-default opacity-80'}" ${allowed||adminEdit||(role==='minsal'&&isToday&&!rec)?'':'disabled'}>${status==='-'?'—':status}</button><span class="time-stamp shift-stamp">${sc?.kind==='shift'?`<span>${escapeHtml(sc.startTime||'--:--')}</span><span>${escapeHtml(sc.endTime||'--:--')}</span>`:sc?.kind==='off'?'<span>Libre</span>':'<span>Sin</span><span>horario</span>'}</span>${role==='admin'?`<button data-schedule="${key}" data-emp="${emp.id}" class="mt-1 w-full rounded-md bg-indigo-50 px-1 py-1 text-[9px] font-bold text-indigo-700">Horario</button>`:''}${rec&&status!=='-'?`<span class="time-stamp" title="Hora de la última actualización">${timeLabel(rec.updatedAt||rec.createdAt)}</span>`:''}</div>`}card.innerHTML=`<div class="mb-3 flex items-center justify-between gap-2"><div class="flex min-w-0 items-center gap-2"><span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-indigo-50 font-bold text-indigo-700">${(emp.name||'?').charAt(0).toUpperCase()}</span><div class="min-w-0"><h3 class="truncate text-sm font-extrabold">${escapeHtml(emp.name||'Sin nombre')}</h3><p class="text-[11px] text-slate-500">${ds.filter(d=>(attendance[`${dateKey(d)}_${emp.id}`]?.status||'-')!=='-').length} marcaciones en período</p></div></div>${role==='admin'?`<button data-edit-employee="${emp.id}" class="rounded-lg bg-slate-100 px-2.5 py-2 text-xs font-bold">Editar</button>`:''}</div><div class="grid ${mode==='month'&&role==='admin'?'grid-cols-7':'grid-cols-7'} gap-1">${dayHtml}</div>`;$('employeeList').appendChild(card)}document.querySelectorAll('.daycell').forEach(b=>b.onclick=()=>{const key=b.dataset.date,eid=b.dataset.emp,rec=attendance[`${key}_${eid}`];if(role==='admin')openEdit(eid,key,rec?.status||'-');else if(role==='minsal'&&key===today&&!rec){if(canMark(eid,key))openMark(eid,key);else toast(markWindowMessage(eid,key));}});document.querySelectorAll('[data-edit-employee]').forEach(b=>b.onclick=()=>editEmployee(b.dataset.editEmployee));document.querySelectorAll('[data-schedule]').forEach(b=>b.onclick=()=>openSchedule(b.dataset.emp,b.dataset.schedule));buildReport(ds)}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
@@ -807,40 +807,68 @@ Nota: las marcaciones no registradas no se clasifican automáticamente como falt
 // Cierre automático ejecutado por la sesión del supervisor en la PC dedicada.
 // Debe mantenerse esta página abierta y el equipo conectado para ejecutarse puntualmente.
 async function runAutomaticClose(){
- if(role!=='supervisor'||!user||autoCloseBusy)return;
- const nowParts=new Intl.DateTimeFormat('en-GB',{timeZone:'America/El_Salvador',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date()).split(':');
- const minutes=Number(nowParts[0])*60+Number(nowParts[1]);
- if(minutes<19*60)return;
- autoCloseBusy=true;let created=0;
+ if(!user||!['supervisor','admin','minsal'].includes(role)||autoCloseBusy)return;
+ // Esperar a que personal, horarios y marcaciones estén cargados desde Firestore.
+ if(!employeesLoaded||!attendanceLoaded||!schedulesLoaded)return;
+ autoCloseBusy=true;let created=0,blocked=0;
  try{
   const today=localDate();
-  for(const emp of employees){
-   if(emp.active===false)continue;
-   const id=`${today}_${emp.id}`,ref=doc(db,...ROOT,'daily_attendance',id),sc=schedules[id];
-   if(!sc)continue;
-   // Si el día está programado como libre, registrar L automáticamente
-   // en el mismo cierre diario que registra las faltas.
-   let autoStatus=null;
-   if(sc.kind==='off'){
-    autoStatus='L';
-   }else if(sc.kind==='shift'&&sc.startTime){
-    const [sh,sm]=sc.startTime.split(':').map(Number);
-    let closeAt=sh*60+sm+30;
-    if(closeAt>=1440)closeAt-=1440;
-    let delta=minutes-closeAt;
-    if(delta< -720)delta+=1440;
-    if(delta<0)continue;
-    autoStatus='X';
-   }else continue;
-   try{
-    const snap=await getDoc(ref);
-    if(snap.exists())continue;
-    await setDoc(ref,{date:today,employeeId:emp.id,employeeName:emp.name||'',status:autoStatus,locked:true,createdAt:serverTimestamp(),updatedAt:serverTimestamp(),actorUid:user.uid,actorRole:'supervisor',source:autoStatus==='L'?'supervisor-auto-off':'supervisor-auto'});
-    created++;
-   }catch(err){console.error(`No se pudo registrar automáticamente ${autoStatus} para ${emp.name||emp.id}:`,err);if(err.code==='permission-denied')toast(`Firestore bloqueó el registro automático de ${autoStatus} para ${emp.name||emp.id}. Revisa las reglas de daily_attendance.`)}
+  const yesterday=dateKey(addDays(parseDate(today),-1));
+  const nowParts=new Intl.DateTimeFormat('en-GB',{timeZone:'America/El_Salvador',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date()).split(':');
+  const nowMinutes=Number(nowParts[0])*60+Number(nowParts[1]);
+  // Minsal solo procesa el empleado que tiene seleccionado en su dispositivo.
+  // Admin y supervisor pueden recuperar los registros de todo el personal.
+  let targets=employees.filter(emp=>emp.active!==false);
+  if(role==='minsal'){
+   targets=selectedMinsalEmployeeId?targets.filter(emp=>emp.id===selectedMinsalEmployeeId):[];
   }
-  if(created)toast(`Cierre automático: ${created} marcación(es) registradas (faltas y libres)`);
- }catch(err){console.error('Error en cierre automático:',err);setSync('Error cierre')}
+  const datesToProcess=[{date:yesterday,kind:'recovery'}];
+  // El supervisor mantiene el cierre del día actual después de las 19:00.
+  if(role==='supervisor'&&nowMinutes>=19*60)datesToProcess.push({date:today,kind:'today'});
+  for(const day of datesToProcess){
+   for(const emp of targets){
+    const id=`${day.date}_${emp.id}`;
+    const sc=schedules[id];
+    if(!sc)continue;
+    let autoStatus=null;
+    if(sc.kind==='off'){
+     autoStatus='L';
+    }else if(sc.kind==='shift'&&sc.startTime){
+     const [sh,sm]=sc.startTime.split(':').map(Number);
+     if(!Number.isFinite(sh)||!Number.isFinite(sm))continue;
+     let closeAt=sh*60+sm+30;
+     // Para ayer, comparar contra los minutos transcurridos desde medianoche de ayer.
+     const elapsedMinutes=day.kind==='recovery'?1440+nowMinutes:nowMinutes;
+     if(elapsedMinutes<closeAt)continue;
+     autoStatus='X';
+    }else continue;
+    // Nunca sustituir una marcación ya existente, manual o automática.
+    if(attendance[id])continue;
+    const ref=doc(db,...ROOT,'daily_attendance',id);
+    try{
+     const snap=await getDoc(ref);
+     if(snap.exists())continue;
+     await setDoc(ref,{
+      date:day.date,employeeId:emp.id,employeeName:emp.name||'',
+      status:autoStatus,locked:true,createdAt:serverTimestamp(),updatedAt:serverTimestamp(),
+      actorUid:user.uid,actorRole:role,
+      source:day.kind==='recovery'
+       ?(autoStatus==='L'?'automatic-recovery-off':'automatic-recovery-absence')
+       :(autoStatus==='L'?'supervisor-auto-off':'supervisor-auto')
+     });
+     created++;
+    }catch(err){
+     blocked++;
+     console.error(`No se pudo recuperar ${autoStatus} de ${day.date} para ${emp.name||emp.id}:`,err);
+     if(err.code==='permission-denied'){
+      console.warn('Firestore denegó la escritura automática. Revisar reglas de daily_attendance para este rol y status.');
+     }
+    }
+   }
+  }
+  if(created)toast(`Recuperación automática: ${created} marcación(es) de ayer/hoy registradas (L y X).`);
+  if(blocked)toast(`${blocked} marcación(es) no se pudieron guardar por permisos de Firestore.`);
+ }catch(err){console.error('Error en recuperación/cierre automático:',err);setSync('Error cierre')}
  finally{autoCloseBusy=false}
 }
 $('copyReport').onclick=async()=>{try{await navigator.clipboard.writeText($('reportText').value);toast('Reporte copiado')}catch{toast('No se pudo copiar')}};$('shareReport').onclick=()=>window.open('https://wa.me/?text='+encodeURIComponent($('reportText').value),'_blank','noopener');
