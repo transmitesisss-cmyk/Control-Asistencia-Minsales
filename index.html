@@ -189,7 +189,7 @@ button:disabled{cursor:not-allowed;opacity:.58}
    <div class="flex flex-wrap items-center gap-2">
     <label class="text-xs font-bold text-slate-600">Período laboral<input id="scheduleMonth" type="month" class="mt-1 block rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"></label>
     <label class="text-xs font-bold text-slate-600">Meta horas / empleado<input id="scheduleTargetHours" type="number" min="0" value="160" class="mt-1 block w-24 rounded-xl border border-slate-300 px-3 py-2 text-sm"></label>
-    <button id="scheduleAddEmployee" class="self-end rounded-xl bg-indigo-600 px-3 py-2.5 text-xs font-bold text-white">+ Empleado</button>
+    <button id="openScheduleImport" class="self-end rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2.5 text-xs font-bold text-indigo-700">📸 Importar foto</button><button id="scheduleAddEmployee" class="self-end rounded-xl bg-indigo-600 px-3 py-2.5 text-xs font-bold text-white">+ Empleado</button>
    </div>
   </div>
   <div class="grid gap-2 sm:grid-cols-3">
@@ -237,6 +237,50 @@ button:disabled{cursor:not-allowed;opacity:.58}
 <div id="whatsAppNoticeModal" class="hidden fixed inset-0 z-[60] grid place-items-center bg-slate-950/60 p-4"><div class="card w-full max-w-sm p-5"><h3 class="text-lg font-extrabold">¿Deseas avisar en el grupo?</h3><p class="mt-2 text-sm text-slate-600">Tu asistencia quedó registrada. ¿Quieres compartir el aviso de tu turno por WhatsApp?</p><div class="mt-4 grid grid-cols-2 gap-2"><button id="whatsAppNo" class="rounded-xl bg-slate-100 p-3 font-bold text-slate-700">No</button><button id="whatsAppYes" class="rounded-xl bg-emerald-600 p-3 font-bold text-white">Sí</button></div><p class="mt-3 text-[11px] text-slate-400">WhatsApp te permitirá elegir el grupo de trabajo antes de enviar el mensaje.</p></div></div>
 <div id="employeeModal" class="hidden fixed inset-0 z-40 grid place-items-center bg-slate-950/50 p-4"><div class="card w-full max-w-sm p-5"><h3 id="employeeModalTitle" class="font-extrabold">Agregar personal</h3><input id="employeeName" maxlength="100" placeholder="Nombre completo" class="mt-4 w-full rounded-xl border border-slate-300 p-3"><div class="mt-4 flex gap-2"><button id="deleteEmployee" class="hidden rounded-xl bg-rose-50 px-3 p-3 text-xs font-bold text-rose-700">Eliminar</button><button id="cancelEmployee" class="flex-1 rounded-xl bg-slate-100 p-3 font-bold">Cancelar</button><button id="saveEmployee" class="flex-1 rounded-xl bg-indigo-600 p-3 font-bold text-white">Guardar</button></div></div></div>
 <div id="editModal" class="hidden fixed inset-0 z-40 grid place-items-center bg-slate-950/50 p-4"><div class="card w-full max-w-sm p-5"><h3 class="font-extrabold">Corregir marcación</h3><p id="editSubtitle" class="mt-1 text-sm text-slate-500"></p><div id="editOptions" class="mt-4 grid grid-cols-2 gap-2"></div><button id="resetAttendance" class="mt-4 w-full rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-bold text-rose-700">Reiniciar esta casilla (dejar pendiente)</button><div class="mt-3 flex gap-2"><button id="cancelEdit" class="flex-1 rounded-xl bg-slate-100 p-3 font-bold">Cancelar</button><button id="saveEdit" class="flex-1 rounded-xl bg-indigo-600 p-3 font-bold text-white">Guardar corrección</button></div></div></div>
+
+<div id="scheduleImportModal" class="hidden fixed inset-0 z-[70] overflow-y-auto bg-slate-950/60 p-3 sm:p-6">
+ <div class="mx-auto my-4 w-full max-w-5xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+  <div class="flex items-center justify-between border-b border-slate-200 bg-gradient-to-r from-indigo-700 to-blue-600 p-5 text-white">
+   <div><div class="text-xs font-bold uppercase tracking-widest text-indigo-100">Importador de reportes</div><h3 class="text-xl font-extrabold">📄 Importar reporte general</h3><p class="mt-1 text-xs text-indigo-100">Importación exacta desde el reporte de programación</p></div>
+   <button id="closeScheduleImport" class="rounded-xl bg-white/15 px-3 py-2 text-xl">✕</button>
+  </div>
+  <div class="grid gap-5 p-5 lg:grid-cols-[.85fr_1.15fr]">
+   <div class="space-y-4">
+    <div class="rounded-2xl border-2 border-dashed border-indigo-300 bg-indigo-50 p-5 text-center">
+     <div class="text-4xl">📄</div><div class="mt-2 font-extrabold text-slate-800">Importar reporte general</div>
+     <p class="mt-1 text-xs text-slate-500">Pega aquí el reporte que genera tu programa de horarios o carga un archivo TXT.</p>
+    </div>
+    <label class="block text-xs font-bold text-slate-600">Cargar archivo TXT
+     <input id="scheduleReportFile" type="file" accept=".txt,text/plain" class="mt-1 block w-full rounded-xl border border-slate-300 p-3 text-sm">
+    </label>
+    <label class="block text-xs font-bold text-slate-600">Contenido del reporte
+     <textarea id="scheduleReportInput" rows="15" placeholder="Pega aquí el REPORTE GENERAL DE PROGRAMACIÓN completo…" class="mt-1 w-full rounded-xl border border-slate-300 p-3 font-mono text-[11px]"></textarea>
+    </label>
+    <button id="processScheduleReport" class="w-full rounded-xl bg-indigo-600 p-3 font-extrabold text-white">📋 Procesar reporte completo</button>
+    <div id="scheduleImportStatus" class="rounded-xl bg-slate-50 p-3 text-xs text-slate-600">El sistema leerá los detalles diarios de cada empleado. No necesitas Gemini ni OCR.</div>
+    <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900"><b>Ventaja:</b> se importan los datos originales del programa, sin interpretar fotografías ni adivinar celdas. Los días que falten en el reporte se señalarán para revisión.</div>
+   </div>
+   <div class="space-y-3">
+    <div class="flex items-center justify-between"><h4 class="font-extrabold text-slate-800">Resultado de la importación</h4><span id="scheduleImportBadge" class="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold text-slate-500">Pendiente</span></div>
+    <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+     <div class="rounded-xl bg-slate-50 p-3"><div class="text-[10px] text-slate-500">Empleados</div><b id="ocrNames" class="text-lg">—</b></div>
+     <div class="rounded-xl bg-slate-50 p-3"><div class="text-[10px] text-slate-500">Días por empleado</div><b id="ocrDays" class="text-lg">—</b></div>
+     <div class="rounded-xl bg-slate-50 p-3"><div class="text-[10px] text-slate-500">Turnos</div><b id="ocrShifts" class="text-lg">—</b></div>
+     <div class="rounded-xl bg-slate-50 p-3"><div class="text-[10px] text-slate-500">Estados especiales</div><b id="ocrStates" class="text-lg">—</b></div>
+    </div>
+    <div class="rounded-xl border border-slate-200 p-3"><div class="mb-2 text-xs font-extrabold text-slate-700">Catálogo reconocido</div><div class="flex flex-wrap gap-1.5 text-[10px] font-bold"><span class="rounded-lg bg-blue-100 px-2 py-1 text-blue-800">0018 · 06–14</span><span class="rounded-lg bg-yellow-100 px-2 py-1 text-yellow-800">0552 · 18–06</span><span class="rounded-lg bg-teal-100 px-2 py-1 text-teal-800">0302 · 10–18</span><span class="rounded-lg bg-pink-100 px-2 py-1 text-pink-800">0210 · 08–16</span><span class="rounded-lg bg-orange-100 px-2 py-1 text-orange-800">0138 · 07–15</span><span class="rounded-lg bg-amber-100 px-2 py-1 text-amber-900">VAC</span><span class="rounded-lg bg-slate-200 px-2 py-1 text-slate-700">LIBRE</span><span class="rounded-lg bg-purple-100 px-2 py-1 text-purple-800">ASUETO</span></div></div>
+    <section id="scheduleReadableReport" class="hidden space-y-3">
+     <div class="flex items-center justify-between"><h4 class="font-extrabold text-slate-800">📋 Reporte por empleado</h4><span id="readableReportCount" class="text-xs text-slate-500"></span></div>
+     <div id="scheduleReadableReportBody" class="space-y-3"></div>
+    </section>
+   </div>
+  </div>
+  <div class="flex flex-wrap items-center justify-between gap-3 border-t bg-slate-50 p-4">
+   <label class="flex items-center gap-2 text-xs font-semibold text-slate-600"><input id="replaceImportedSchedules" type="checkbox" class="h-4 w-4"> Reemplazar horarios que ya existen</label>
+   <div class="flex gap-2"><button id="cancelScheduleImport" class="rounded-xl bg-white px-5 py-3 font-bold text-slate-600 ring-1 ring-slate-200">Cerrar</button><button id="saveImportedSchedules" disabled class="rounded-xl bg-emerald-600 px-5 py-3 font-extrabold text-white disabled:opacity-40">Guardar horarios en Firebase</button></div>
+  </div>
+ </div>
+</div>
 <div id="scheduleModal" class="hidden fixed inset-0 z-40 grid place-items-center bg-slate-950/50 p-4"><div class="card w-full max-w-sm p-5"><h3 class="font-extrabold">Configurar horario</h3><p id="scheduleSubtitle" class="mt-1 text-sm text-slate-500"></p><label class="mt-4 flex items-center gap-2 text-sm font-semibold"><input id="scheduleOff" type="checkbox" class="h-4 w-4"> Día libre</label><div id="scheduleTimes" class="mt-3 grid grid-cols-2 gap-3"><label class="text-xs font-bold text-slate-600">Entrada<input id="scheduleStart" type="time" class="mt-1 w-full rounded-xl border border-slate-300 p-3 text-sm"></label><label class="text-xs font-bold text-slate-600">Salida<input id="scheduleEnd" type="time" class="mt-1 w-full rounded-xl border border-slate-300 p-3 text-sm"></label></div><p class="mt-3 text-[11px] text-slate-500">La ventana de marcación será desde 60 minutos antes hasta 30 minutos después de la hora de entrada.</p><div class="mt-4 flex gap-2"><button id="cancelSchedule" class="flex-1 rounded-xl bg-slate-100 p-3 font-bold">Cancelar</button><button id="saveSchedule" class="flex-1 rounded-xl bg-indigo-600 p-3 font-bold text-white">Guardar horario</button></div></div></div><div id="supervisorExitModal" class="hidden fixed inset-0 z-[80] grid place-items-center bg-slate-950/70 p-4"><form id="supervisorExitForm" class="card w-full max-w-sm p-5"><div class="mb-2 grid h-11 w-11 place-items-center rounded-xl bg-amber-100 text-xl">🔒</div><h3 class="font-extrabold">Proteger sesión del supervisor</h3><p class="mt-1 text-sm text-slate-500">Para cerrar la sesión del supervisor debes confirmar su contraseña.</p><label for="supervisorExitPassword" class="mt-4 block text-xs font-bold text-slate-600">Contraseña del supervisor</label><input id="supervisorExitPassword" type="password" required autocomplete="current-password" class="mt-1 w-full rounded-xl border border-slate-300 p-3" placeholder="Introduce la contraseña"><p id="supervisorExitError" class="mt-2 hidden text-sm text-rose-600"></p><div class="mt-4 flex gap-2"><button type="button" id="cancelSupervisorExit" class="flex-1 rounded-xl bg-slate-100 p-3 font-bold">Cancelar</button><button id="confirmSupervisorExit" class="flex-1 rounded-xl bg-rose-600 p-3 font-bold text-white">Confirmar salida</button></div></form></div><div id="welcomeSplash" class="fixed inset-0 z-[200] flex items-center justify-center bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 p-6 text-center text-white transition-opacity duration-500">
  <div class="max-w-sm">
   <div id="welcomeCelestial" class="celestial mx-auto mb-6 grid h-24 w-24 place-items-center rounded-3xl border border-white/20 bg-white/10 text-5xl shadow-2xl" aria-hidden="true">☀️</div>
@@ -255,7 +299,8 @@ const firebaseConfig={apiKey:'AIzaSyCJUpWyI0Qw3L5MRB6wra122OcagbitbcM',authDomai
 const ROOT=['artifacts','mensales-asistencia-app','public','data'];
 const USERS={pv63hlYkYSRmXdM4ei9qgBhdWd83:'minsal',VGqx0YRg33T40eUCDQvfT19X4Bg1:'admin',omz3QCdEMBesfxYjUC53ZwuZBOQ2:'admin',JsiF4oXezGMRcGzdSNfji3JIBlU2:'supervisor'};
 const STATUS={'✓':{name:'Asistió',cls:'bg-emerald-100 text-emerald-800 border-emerald-300'},L:{name:'Libre',cls:'bg-sky-100 text-sky-800 border-sky-300'},X:{name:'Faltó',cls:'bg-rose-100 text-rose-800 border-rose-300'},I:{name:'Incapacidad',cls:'bg-violet-100 text-violet-800 border-violet-300'},P:{name:'Permiso',cls:'bg-amber-100 text-amber-800 border-amber-300'},'-':{name:'Pendiente',cls:'bg-slate-100 text-slate-500 border-slate-200'}};
-const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);let user=null,role=null,employees=[],attendance={},schedules={},unsubEmp=null,unsubAtt=null,unsubSchedules=null,scheduleTarget=null,periodDate=new Date(),mode='week',selected=null,editTarget=null,selectedStatus=null,editingStatus=null,autoCloseBusy=false,autoCloseTimer=null,employeesLoaded=false,attendanceLoaded=false,schedulesLoaded=false;
+const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
+let user=null,role=null,employees=[],attendance={},schedules={},unsubEmp=null,unsubAtt=null,unsubSchedules=null,scheduleTarget=null,periodDate=new Date(),mode='week',selected=null,editTarget=null,selectedStatus=null,editingStatus=null,autoCloseBusy=false,autoCloseTimer=null,employeesLoaded=false,attendanceLoaded=false,schedulesLoaded=false;
 const $=id=>document.getElementById(id);
 const LAST_REPORT_KEY='minsal_last_report_name_v1';
 const LAST_REPORT_EMPLOYEE_ID_KEY='minsal_last_report_employee_id_v1';
@@ -341,7 +386,7 @@ async function verifyHospitalGeofence(){
  return {geoLat:latitude,geoLng:longitude,geoAccuracy:Math.round(accuracy),geoDistanceMeters:Math.round(distance),geoVerifiedAt:new Date().toISOString()};
 }
 
-const scheduleWindow=(empId,date)=>{const sc=schedules[`${date}_${empId}`];if(sc?.kind==='off')return {kind:'off'};if(!sc||sc.kind!=='shift'||!sc.startTime)return {kind:'general',start:5*60,end:18*60+30};const [h,m]=sc.startTime.split(':').map(Number);const start=h*60+m;return {kind:'shift',start:(start-60+1440)%1440,end:(start+30)%1440,shiftStart:start};};
+const scheduleWindow=(empId,date)=>{const sc=schedules[`${date}_${empId}`];if(sc?.kind==='off'||sc?.kind==='vacation'||sc?.kind==='holiday')return {kind:sc.kind};if(!sc||sc.kind!=='shift'||!sc.startTime)return {kind:'general',start:5*60,end:18*60+30};const [h,m]=sc.startTime.split(':').map(Number);const start=h*60+m;return {kind:'shift',start:(start-60+1440)%1440,end:(start+30)%1440,shiftStart:start};};
 
 // Recordatorios locales: se disparan a la hora de entrada mientras la app esté abierta o en segundo plano.
 const REMINDER_ENABLED_KEY='minsal_entry_reminders_enabled_v1';
@@ -420,7 +465,7 @@ window.setInterval(checkEntryReminders,30000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkEntryReminders();});
 
 const timeOfDayLabel=minutes=>new Intl.DateTimeFormat('es-SV',{timeZone:'America/El_Salvador',hour:'numeric',minute:'2-digit',hour12:true}).format(new Date(`2026-01-01T${String(Math.floor(minutes/60)%24).padStart(2,'0')}:${String(minutes%60).padStart(2,'0')}:00-06:00`));
-const markWindowMessage=(empId,date)=>{const w=scheduleWindow(empId,date),now=localMinutes();if(w.kind==='off')return 'Hoy tienes día libre programado. No puedes marcar asistencia.';if(w.kind==='general'){if(now<w.start)return `Aún no es hora de marcar. Solo puedes marcar a las ${timeOfDayLabel(w.start)}.`;if(now>w.end)return 'Ya es tarde para marcar. Contacta con la jefa.';return '';}const wraps=w.start>w.end;const inside=wraps?(now>=w.start||now<=w.end):(now>=w.start&&now<=w.end);if(inside)return '';if(!wraps&&now<w.start)return `Aún no es hora de marcar. Solo puedes marcar a las ${timeOfDayLabel(w.start)}.`;if(wraps&&now>w.end&&now<w.start)return 'Ya es tarde para marcar. Contacta con la jefa.';if(now<w.start)return `Aún no es hora de marcar. Solo puedes marcar a las ${timeOfDayLabel(w.start)}.`;return 'Ya es tarde para marcar. Contacta con la jefa.';};
+const markWindowMessage=(empId,date)=>{const w=scheduleWindow(empId,date),now=localMinutes();if(w.kind==='off')return 'Hoy tienes día libre programado. No puedes marcar asistencia.';if(w.kind==='vacation')return 'Hoy tienes vacaciones programadas. No puedes marcar asistencia.';if(w.kind==='holiday')return 'Hoy tienes asueto programado. No puedes marcar asistencia.';if(w.kind==='general'){if(now<w.start)return `Aún no es hora de marcar. Solo puedes marcar a las ${timeOfDayLabel(w.start)}.`;if(now>w.end)return 'Ya es tarde para marcar. Contacta con la jefa.';return '';}const wraps=w.start>w.end;const inside=wraps?(now>=w.start||now<=w.end):(now>=w.start&&now<=w.end);if(inside)return '';if(!wraps&&now<w.start)return `Aún no es hora de marcar. Solo puedes marcar a las ${timeOfDayLabel(w.start)}.`;if(wraps&&now>w.end&&now<w.start)return 'Ya es tarde para marcar. Contacta con la jefa.';if(now<w.start)return `Aún no es hora de marcar. Solo puedes marcar a las ${timeOfDayLabel(w.start)}.`;return 'Ya es tarde para marcar. Contacta con la jefa.';};
 const canMark=(empId,date)=>role==='minsal'&&date===localDate()&&markWindowMessage(empId,date)==='';
 function toast(s){$('toast').textContent=s;$('toast').classList.remove('hidden');setTimeout(()=>$('toast').classList.add('hidden'),2600)}function firebaseErrorInfo(err,context='operación'){
  const code=err?.code||'sin-codigo';
@@ -473,7 +518,7 @@ $('cancelSupervisorExit').onclick=()=>{$('supervisorExitModal').classList.add('h
 $('supervisorExitForm').addEventListener('submit',async e=>{e.preventDefault();if(role!=='supervisor'||!user)return;const password=$('supervisorExitPassword').value;if(!password)return;const btn=$('confirmSupervisorExit');btn.disabled=true;btn.textContent='Verificando...';$('supervisorExitError').classList.add('hidden');try{const credential=EmailAuthProvider.credential(user.email,password);await reauthenticateWithCredential(user,credential);if(autoCloseTimer){clearInterval(autoCloseTimer);autoCloseTimer=null}await signOut(auth);$('supervisorExitModal').classList.add('hidden')}catch(err){console.error('Reautenticación supervisor:',err);$('supervisorExitError').textContent=err.code==='auth/wrong-password'||err.code==='auth/invalid-credential'?'Contraseña incorrecta. La sesión del supervisor continúa abierta.':'No se pudo verificar la contraseña. Revisa la conexión e inténtalo de nuevo.';$('supervisorExitError').classList.remove('hidden')}finally{btn.disabled=false;btn.textContent='Confirmar salida'}});
 function startListeners(){if(unsubEmp)unsubEmp();if(unsubAtt)unsubAtt();if(unsubSchedules)unsubSchedules();employeesLoaded=false;attendanceLoaded=false;schedulesLoaded=false;unsubEmp=onSnapshot(path('mensales_staff'),s=>{employees=s.docs.map(d=>({id:d.id,...d.data()})).filter(e=>e.active!==false).sort((a,b)=>(a.name||'').localeCompare(b.name||''));employeesLoaded=true;render();setSync('En vivo');runAutomaticClose()},e=>{console.error(e);setSync('Sin conexión');toast('Error leyendo personal')});unsubAtt=onSnapshot(path('daily_attendance'),s=>{attendance={};s.docs.forEach(d=>attendance[d.id]={id:d.id,...d.data()});attendanceLoaded=true;render();if(!$('gpsView').classList.contains('hidden'))renderGpsView();runAutomaticClose()},e=>{console.error(e);setSync('Sin conexión');toast('Error leyendo marcaciones')});unsubSchedules=onSnapshot(path('daily_schedules'),s=>{schedules={};s.docs.forEach(d=>schedules[d.id]={id:d.id,...d.data()});schedulesLoaded=true;render();runAutomaticClose()},e=>{console.error('Error leyendo horarios para cierre automático:',e);setSync('Sin conexión');toast('Error leyendo horarios')})}
 function datesForUI(){if(role==='minsal'){const today=parseDate(localDate());return weekDates(today)}return dateRange()}
-function render(){updateReminderPanel();checkEntryReminders();if(role==='admin'&&!$('scheduleManagerView').classList.contains('hidden'))renderScheduleManager();const ds=datesForUI();$('periodCaption').textContent=role==='admin'?(mode==='week'?'Vista semanal':'Vista mensual'):'Semana en curso';$('periodTitle').textContent=mode==='month'&&role==='admin'?new Intl.DateTimeFormat('es-SV',{month:'long',year:'numeric'}).format(periodDate):`${fmt(ds[0])} — ${fmt(ds[6])}`;$('periodTitle').classList.toggle('capitalize',true);const today=localDate();$('employeeList').innerHTML='';updateMinsalEmployeeChooser();const displayedEmployees=role==='minsal'&&selectedMinsalEmployeeId?employees.filter(e=>e.id===selectedMinsalEmployeeId):employees;if(!displayedEmployees.length){$('employeeList').innerHTML='<div class="card p-8 text-center"><p class="font-bold">No hay personal registrado</p><p class="mt-1 text-sm text-slate-500">La lista está vacía. Administración puede agregar empleados.</p></div>';buildReport(ds);return}for(const emp of displayedEmployees){const card=document.createElement('article');card.className='card p-4';let dayHtml='';for(const d of ds){const key=dateKey(d),id=`${key}_${emp.id}`,rec=attendance[id],status=rec?.status||'-',sc=schedules[id],isToday=key===today,allowed=canMark(emp.id,key)&&!rec,adminEdit=role==='admin';const label=new Intl.DateTimeFormat('es-SV',{weekday:'short'}).format(d).replace('.','');const shiftText=sc?.kind==='off'?'Libre':sc?.kind==='shift'?`${sc.startTime||'--:--'}–${sc.endTime||'--:--'}`:'Sin horario';dayHtml+=`<div class="min-w-0 text-center"><div class="mb-1 text-[10px] font-bold uppercase text-slate-500">${label}</div><div class="mb-1 text-[10px] text-slate-400">${d.getDate()}</div><button data-date="${key}" data-emp="${emp.id}" class="daycell w-full rounded-lg border py-2 text-sm font-extrabold ${STATUS[status].cls} ${isToday?'ring-2 ring-indigo-400 ring-offset-1':''} ${allowed||adminEdit||(role==='minsal'&&isToday&&!rec)?'':'cursor-default opacity-80'}" ${allowed||adminEdit||(role==='minsal'&&isToday&&!rec)?'':'disabled'}>${status==='-'?'—':status}</button><span class="time-stamp shift-stamp">${sc?.kind==='shift'?`<span>${escapeHtml(sc.startTime||'--:--')}</span><span>${escapeHtml(sc.endTime||'--:--')}</span>`:sc?.kind==='off'?'<span>Libre</span>':'<span>Sin</span><span>horario</span>'}</span>${role==='admin'?`<button data-schedule="${key}" data-emp="${emp.id}" class="mt-1 w-full rounded-md bg-indigo-50 px-1 py-1 text-[9px] font-bold text-indigo-700">Horario</button>`:''}${rec&&status!=='-'?`<span class="time-stamp" title="Hora de la última actualización">${timeLabel(rec.updatedAt||rec.createdAt)}</span>`:''}</div>`}card.innerHTML=`<div class="mb-3 flex items-center justify-between gap-2"><div class="flex min-w-0 items-center gap-2"><span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-indigo-50 font-bold text-indigo-700">${(emp.name||'?').charAt(0).toUpperCase()}</span><div class="min-w-0"><h3 class="truncate text-sm font-extrabold">${escapeHtml(emp.name||'Sin nombre')}</h3><p class="text-[11px] text-slate-500">${ds.filter(d=>(attendance[`${dateKey(d)}_${emp.id}`]?.status||'-')!=='-').length} marcaciones en período</p></div></div>${role==='admin'?`<button data-edit-employee="${emp.id}" class="rounded-lg bg-slate-100 px-2.5 py-2 text-xs font-bold">Editar</button>`:''}</div><div class="grid ${mode==='month'&&role==='admin'?'grid-cols-7':'grid-cols-7'} gap-1">${dayHtml}</div>`;$('employeeList').appendChild(card)}document.querySelectorAll('.daycell').forEach(b=>b.onclick=()=>{const key=b.dataset.date,eid=b.dataset.emp,rec=attendance[`${key}_${eid}`];if(role==='admin')openEdit(eid,key,rec?.status||'-');else if(role==='minsal'&&key===today&&!rec){if(canMark(eid,key))openMark(eid,key);else toast(markWindowMessage(eid,key));}});document.querySelectorAll('[data-edit-employee]').forEach(b=>b.onclick=()=>editEmployee(b.dataset.editEmployee));document.querySelectorAll('[data-schedule]').forEach(b=>b.onclick=()=>openSchedule(b.dataset.emp,b.dataset.schedule));buildReport(ds)}
+function render(){updateReminderPanel();checkEntryReminders();if(role==='admin'&&!$('scheduleManagerView').classList.contains('hidden'))renderScheduleManager();const ds=datesForUI();$('periodCaption').textContent=role==='admin'?(mode==='week'?'Vista semanal':'Vista mensual'):'Semana en curso';$('periodTitle').textContent=mode==='month'&&role==='admin'?new Intl.DateTimeFormat('es-SV',{month:'long',year:'numeric'}).format(periodDate):`${fmt(ds[0])} — ${fmt(ds[6])}`;$('periodTitle').classList.toggle('capitalize',true);const today=localDate();$('employeeList').innerHTML='';updateMinsalEmployeeChooser();const displayedEmployees=role==='minsal'&&selectedMinsalEmployeeId?employees.filter(e=>e.id===selectedMinsalEmployeeId):employees;if(!displayedEmployees.length){$('employeeList').innerHTML='<div class="card p-8 text-center"><p class="font-bold">No hay personal registrado</p><p class="mt-1 text-sm text-slate-500">La lista está vacía. Administración puede agregar empleados.</p></div>';buildReport(ds);return}for(const emp of displayedEmployees){const card=document.createElement('article');card.className='card p-4';let dayHtml='';for(const d of ds){const key=dateKey(d),id=`${key}_${emp.id}`,rec=attendance[id],status=rec?.status||'-',sc=schedules[id],isToday=key===today,allowed=canMark(emp.id,key)&&!rec,adminEdit=role==='admin';const label=new Intl.DateTimeFormat('es-SV',{weekday:'short'}).format(d).replace('.','');const shiftText=sc?.kind==='off'?'Libre':sc?.kind==='vacation'?'Vacaciones':sc?.kind==='holiday'?'Asueto':sc?.kind==='shift'?`${sc.startTime||'--:--'}–${sc.endTime||'--:--'}`:'Sin horario';dayHtml+=`<div class="min-w-0 text-center"><div class="mb-1 text-[10px] font-bold uppercase text-slate-500">${label}</div><div class="mb-1 text-[10px] text-slate-400">${d.getDate()}</div><button data-date="${key}" data-emp="${emp.id}" class="daycell w-full rounded-lg border py-2 text-sm font-extrabold ${STATUS[status].cls} ${isToday?'ring-2 ring-indigo-400 ring-offset-1':''} ${allowed||adminEdit||(role==='minsal'&&isToday&&!rec)?'':'cursor-default opacity-80'}" ${allowed||adminEdit||(role==='minsal'&&isToday&&!rec)?'':'disabled'}>${status==='-'?'—':status}</button><span class="time-stamp shift-stamp">${sc?.kind==='shift'?`<span>${escapeHtml(sc.startTime||'--:--')}</span><span>${escapeHtml(sc.endTime||'--:--')}</span>`:sc?.kind==='off'?'<span>Libre</span>':sc?.kind==='vacation'?'<span>Vacaciones</span>':sc?.kind==='holiday'?'<span>Asueto</span>':'<span>Sin</span><span>horario</span>'}</span>${role==='admin'?`<button data-schedule="${key}" data-emp="${emp.id}" class="mt-1 w-full rounded-md bg-indigo-50 px-1 py-1 text-[9px] font-bold text-indigo-700">Horario</button>`:''}${rec&&status!=='-'?`<span class="time-stamp" title="Hora de la última actualización">${timeLabel(rec.updatedAt||rec.createdAt)}</span>`:''}</div>`}card.innerHTML=`<div class="mb-3 flex items-center justify-between gap-2"><div class="flex min-w-0 items-center gap-2"><span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-indigo-50 font-bold text-indigo-700">${(emp.name||'?').charAt(0).toUpperCase()}</span><div class="min-w-0"><h3 class="truncate text-sm font-extrabold">${escapeHtml(emp.name||'Sin nombre')}</h3><p class="text-[11px] text-slate-500">${ds.filter(d=>(attendance[`${dateKey(d)}_${emp.id}`]?.status||'-')!=='-').length} marcaciones en período</p></div></div>${role==='admin'?`<button data-edit-employee="${emp.id}" class="rounded-lg bg-slate-100 px-2.5 py-2 text-xs font-bold">Editar</button>`:''}</div><div class="grid ${mode==='month'&&role==='admin'?'grid-cols-7':'grid-cols-7'} gap-1">${dayHtml}</div>`;$('employeeList').appendChild(card)}document.querySelectorAll('.daycell').forEach(b=>b.onclick=()=>{const key=b.dataset.date,eid=b.dataset.emp,rec=attendance[`${key}_${eid}`];if(role==='admin')openEdit(eid,key,rec?.status||'-');else if(role==='minsal'&&key===today&&!rec){if(canMark(eid,key))openMark(eid,key);else toast(markWindowMessage(eid,key));}});document.querySelectorAll('[data-edit-employee]').forEach(b=>b.onclick=()=>editEmployee(b.dataset.editEmployee));document.querySelectorAll('[data-schedule]').forEach(b=>b.onclick=()=>openSchedule(b.dataset.emp,b.dataset.schedule));buildReport(ds)}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function statusButtons(container,callback,current){container.innerHTML='';Object.entries(STATUS).filter(([k])=>k!=='-').forEach(([k,v])=>{const b=document.createElement('button');b.className=`rounded-xl border p-3 text-sm font-extrabold ${v.cls} ${current===k?'ring-2 ring-indigo-500':''}`;b.textContent=`${k} · ${v.name}`;b.onclick=()=>callback(k);container.appendChild(b)})}
 function openMark(empId,date){selected={empId,date};selectedStatus=null;$('statusTitle').textContent='Confirmar asistencia';$('statusSubtitle').textContent=`${employees.find(e=>e.id===empId)?.name||''} · ${fmt(parseDate(date))}`;$('gpsStatus').classList.add('hidden');$('gpsStatus').textContent='';const chooseStatus=s=>{selectedStatus=s;$('confirmStatus').disabled=false;$('confirmStatus').textContent=s==='✓'?'Verificar ubicación y marcar':'Confirmar marcación';if(s==='✓'){$('gpsStatus').textContent='📍 Para registrar Asistió debes estar dentro de 85 metros del centro del Hospital Médico Quirúrgico. Se solicitará tu ubicación al confirmar.';$('gpsStatus').className='mt-3 rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs leading-relaxed text-blue-800'}else $('gpsStatus').classList.add('hidden');statusButtons($('statusOptions'),chooseStatus,s)};statusButtons($('statusOptions'),chooseStatus,null);$('confirmStatus').disabled=true;$('confirmStatus').textContent='Confirmar marcación';$('statusModal').classList.remove('hidden')}
@@ -693,6 +738,8 @@ function renderScheduleManager(){
    const id=`${key}_${e.id}`,sc=schedules[id],kind=sc?.kind||'none';
    let label='SIN HORARIO',sub='Pulsa para asignar',cls='bg-white text-slate-500 border-slate-200';
    if(kind==='off'){label='LIBRE';sub='Día libre';cls='bg-slate-200 text-slate-700 border-slate-300'}
+   else if(kind==='vacation'){label='VACACIONES';sub='8 horas';cls='bg-amber-100 text-amber-900 border-amber-300'}
+   else if(kind==='holiday'){label='ASUETO';sub='8 horas';cls='bg-purple-100 text-purple-900 border-purple-300'}
    else if(kind==='shift'&&sc.startTime&&sc.endTime){
     const hrs=scheduleHours(sc.startTime,sc.endTime);totals[e.id]+=hrs;
     const night=sc.endTime<=sc.startTime;
@@ -986,5 +1033,234 @@ updateInstallButtons();
 if('serviceWorker' in navigator && location.protocol==='https:'){
  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(err=>console.warn('No se pudo registrar el Service Worker:',err)));
 }
+</script>
+
+<script>
+(()=>{
+ const $i=id=>document.getElementById(id);
+ const modal=$i('scheduleImportModal'); if(!modal)return;
+ const open=()=>{modal.classList.remove('hidden');$i('scheduleImportMonth').value=$i('scheduleMonth')?.value||new Date().toISOString().slice(0,7)};
+ const close=()=>modal.classList.add('hidden');
+ $i('openScheduleImport')?.addEventListener('click',()=>{if(role!=='admin'){toast('Solo el administrador puede importar horarios');return;}open();});
+ $i('closeScheduleImport').onclick=close;$i('cancelScheduleImport').onclick=close;
+ function renderGeminiSchedule(data){
+  const section=$i('scheduleReadableReport'),body=$i('scheduleReadableReportBody');
+  const month=$i('scheduleImportMonth').value;const [yy,mm]=month.split('-').map(Number);
+  const total=new Date(yy,mm,0).getDate();
+  const weekdayNames=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  body.innerHTML='';
+  let review=0;
+  (data.employees||[]).forEach(emp=>{
+   const card=document.createElement('div');card.className='overflow-hidden rounded-xl border border-slate-200';
+   const title=document.createElement('div');title.className='bg-slate-100 px-3 py-2 text-xs font-extrabold text-slate-800';title.textContent=emp.name||'EMPLEADO SIN IDENTIFICAR';card.appendChild(title);
+   const table=document.createElement('div');table.className='divide-y divide-slate-100';
+   const map=new Map((emp.days||[]).map(d=>[Number(d.day),d]));
+   for(let day=1;day<=total;day++){
+    const d=map.get(day)||{type:'REVISAR',label:'REVISAR'};
+    let label=d.label||'REVISAR';
+    if(d.code==='0018')label='6 AM A 2 PM';else if(d.code==='0552')label='6 PM A 6 AM';else if(d.code==='0302')label='10 AM A 6 PM';else if(d.code==='0210')label='8 AM A 4 PM';else if(d.code==='0138')label='7 AM A 3 PM';else if(d.code==='VAC')label='VACACIONES';else if(d.code==='LIBRE')label='LIBRE';else if(d.code==='ASUETO')label='ASUETO';
+    if(d.type==='REVISAR'||label==='REVISAR'||!d){review++}
+    const dt=new Date(yy,mm-1,day),weekday=weekdayNames[dt.getDay()];
+    const line=document.createElement('div');line.className='grid grid-cols-[34px_1fr_1.2fr] gap-2 px-3 py-2 text-xs';
+    [String(day),weekday,label].forEach((v,j)=>{const span=document.createElement('span');span.textContent=v;span.className=j===2?'font-bold '+(label==='REVISAR'?'text-rose-600':'text-slate-800'):'text-slate-600';line.appendChild(span)});
+    table.appendChild(line);
+   }
+   card.appendChild(table);body.appendChild(card);
+  });
+  $i('readableReportCount').textContent=(data.employees||[]).length+' empleados · '+total+' días completos · '+review+' celdas por revisar';
+  section.classList.remove('hidden');
+ }
+ function classify(txt){
+  const t=txt.toUpperCase();
+  const names=(t.match(/[A-ZÁÉÍÓÚÑ]{3,}(?:\s+[A-ZÁÉÍÓÚÑ]{2,}){2,}/g)||[]);
+  const unique=[...new Set(names)];
+  // Usar límites de palabra reales: el doble escape impedía detectar códigos y estados.
+  const days=(t.match(/\b(?:0?[1-9]|[12][0-9]|3[01])\b/g)||[]);
+  const shifts=(t.match(/\b(?:0018|0552|0302|0210|0138)\b/g)||[]);
+  const states=(t.match(/\b(?:LIBRE|ASUETO|VAC(?:ACIONES)?)\b/g)||[]);
+  const uniqueDays=[...new Set(days.map(x=>String(parseInt(x,10))))];
+  $i('ocrNames').textContent=unique.length;
+  $i('ocrDays').textContent=$i('scheduleImportMonth').value?(()=>{const [y,m]=$i('scheduleImportMonth').value.split('-').map(Number);return new Date(y,m,0).getDate()})():uniqueDays.length;
+  $i('ocrShifts').textContent=shifts.length;
+  $i('ocrStates').textContent=states.length;
+ }
+
+ function renderReadableSchedule(words,file){
+  const section=$i('scheduleReadableReport'), body=$i('scheduleReadableReportBody');
+  const img=$i('scheduleImportImage');
+  const W=img.naturalWidth||1300,H=img.naturalHeight||1100;
+  const center=w=>(w.bbox.x0+w.bbox.x1)/2, cy=w=>(w.bbox.y0+w.bbox.y1)/2;
+  const clean=s=>String(s||'').replace(/[^A-ZÁÉÍÓÚÑ0-9:.-]/gi,' ').replace(/\s+/g,' ').trim();
+  const monthVal=$i('scheduleImportMonth').value;
+  if(!monthVal||!words.length){section.classList.remove('hidden');body.innerHTML='<p class="rounded-xl bg-amber-50 p-3 text-xs text-amber-800">No se pudo obtener la posición de las celdas. Revisa la lectura y vuelve a intentar con una imagen más nítida.</p>';return;}
+  const cols=7, left=W*.145, right=W*.985, cw=(right-left)/6;
+  const header=words.filter(w=>cy(w)>H*.07&&cy(w)<H*.19&&center(w)>=left);
+  const names=[];
+  for(let c=0;c<6;c++){
+   const x0=left+c*cw,x1=x0+cw;
+   const ws=header.filter(w=>center(w)>=x0&&center(w)<x1).sort((a,b)=>cy(a)-cy(b)||center(a)-center(b));
+   names.push(clean(ws.map(w=>w.text).join(' '))||('EMPLEADO '+(c+1)));
+  }
+  // No depender de que OCR lea todos los números: generar SIEMPRE cada día del mes.
+  // Las posiciones detectadas sirven como anclas; los días omitidos se interpolan.
+  const dateWords=words.filter(w=>center(w)<left&&cy(w)>H*.17&&cy(w)<H*.98&&/^(0?[1-9]|[12][0-9]|3[01])$/.test(clean(w.text)));
+  const anchors=[];
+  dateWords.sort((a,b)=>cy(a)-cy(b)).forEach(w=>{
+   const d=parseInt(w.text,10);
+   if(!anchors.some(a=>a.day===d))anchors.push({day:d,y:cy(w)});
+  });
+  anchors.sort((a,b)=>a.day-b.day);
+  const [yy,mm]=monthVal.split('-').map(Number);
+  const daysInMonth=new Date(yy,mm,0).getDate();
+  const interpolateY=day=>{
+   if(anchors.length>=2){
+    let a=anchors[0],b=anchors[1];
+    if(day<=anchors[0].day){a=anchors[0];b=anchors[1];}
+    else if(day>=anchors[anchors.length-1].day){a=anchors[anchors.length-2];b=anchors[anchors.length-1];}
+    else {for(let k=0;k<anchors.length-1;k++){if(day>=anchors[k].day&&day<=anchors[k+1].day){a=anchors[k];b=anchors[k+1];break;}}}
+    return a.y+(b.y-a.y)*(day-a.day)/(b.day-a.day);
+   }
+   // Respaldo para imágenes donde OCR no detectó los números del margen.
+   const top=H*.185,bottom=H*.965;
+   return top+(day-1)*(bottom-top)/Math.max(1,daysInMonth-1);
+  };
+  const dateRows=Array.from({length:daysInMonth},(_,i)=>({day:i+1,y:interpolateY(i+1)}));
+  const namesAndRows=names.map((name,c)=>{
+   const rows=dateRows.map((r,i)=>{
+    const y0=i===0?(r.y- H*.015):(dateRows[i-1].y+r.y)/2;
+    const y1=i===dateRows.length-1?(r.y+H*.018):(r.y+dateRows[i+1].y)/2;
+    const x0=left+c*cw,x1=x0+cw;
+    const cell=words.filter(w=>center(w)>=x0&&center(w)<x1&&cy(w)>=y0&&cy(w)<y1).sort((a,b)=>center(a)-center(b));
+    const raw=clean(cell.map(w=>w.text).join(' ')).toUpperCase();
+    let label='REVISAR';
+    if(/\bLIBRE\b/.test(raw))label='LIBRE';
+    else if(/\bASUETO\b/.test(raw))label='ASUETO';
+    else if(/\bVAC(?:ACIONES)?\b/.test(raw))label='VACACIONES';
+    else if(/\b0018\b/.test(raw)||/6AM.*2PM|06:00.*14:00/.test(raw))label='6 AM A 2 PM';
+    else if(/\b0552\b/.test(raw)||/6PM.*6AM|18:00.*06:00/.test(raw))label='6 PM A 6 AM';
+    else if(/\b0302\b/.test(raw)||/10AM.*6PM|10:00.*18:00/.test(raw))label='10 AM A 6 PM';
+    else if(/\b0210\b/.test(raw)||/8AM.*4PM|08:00.*16:00/.test(raw))label='8 AM A 4 PM';
+    else if(/\b0138\b/.test(raw)||/7AM.*3PM|07:00.*15:00/.test(raw))label='7 AM A 3 PM';
+    const dt=new Date(yy,mm-1,r.day);
+    const weekday=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'][dt.getDay()];
+    return {day:r.day,weekday,label,raw};
+   });
+   return {name,rows};
+  });
+  body.innerHTML='';
+  namesAndRows.forEach(emp=>{
+   const card=document.createElement('div');card.className='overflow-hidden rounded-xl border border-slate-200';
+   const title=document.createElement('div');title.className='bg-slate-100 px-3 py-2 text-xs font-extrabold text-slate-800';title.textContent=emp.name;card.appendChild(title);
+   const table=document.createElement('div');table.className='divide-y divide-slate-100';
+   emp.rows.forEach(r=>{
+    const line=document.createElement('div');line.className='grid grid-cols-[34px_1fr_1.2fr] gap-2 px-3 py-2 text-xs';
+    [String(r.day),r.weekday,r.label].forEach((v,j)=>{const span=document.createElement('span');span.textContent=v;span.className=j===2?'font-bold text-slate-800':'text-slate-600';line.appendChild(span)});
+    table.appendChild(line);
+   });
+   card.appendChild(table);body.appendChild(card);
+  });
+  $i('readableReportCount').textContent=namesAndRows.length+' empleados · '+dateRows.length+' días (mes completo)';
+  section.classList.remove('hidden');
+ }
+
+ const reportFile=$i('scheduleReportFile');
+ reportFile?.addEventListener('change',async e=>{
+  const f=e.target.files?.[0];if(!f)return;
+  $i('scheduleReportInput').value=await f.text();
+ });
+
+ let importedScheduleData=null;
+ const normalizePersonName=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9 ]/gi,' ').replace(/\s+/g,' ').trim().toUpperCase();
+ const scheduleCatalog={
+  '0018':{kind:'shift',startTime:'06:00',endTime:'14:00',hours:8},
+  '0552':{kind:'shift',startTime:'18:00',endTime:'06:00',hours:12},
+  '0302':{kind:'shift',startTime:'10:00',endTime:'18:00',hours:8},
+  '0210':{kind:'shift',startTime:'08:00',endTime:'16:00',hours:8},
+  '0138':{kind:'shift',startTime:'07:00',endTime:'15:00',hours:8},
+  'LIBRE':{kind:'off',startTime:null,endTime:null,hours:0},
+  'VAC':{kind:'vacation',startTime:null,endTime:null,hours:8},
+  'ASUETO':{kind:'holiday',startTime:null,endTime:null,hours:8}
+ };
+ function parseProgramReport(raw){
+  const lines=raw.split(/\r?\n/);
+  const periodLine=lines.find(x=>/^Per[ií]odo:/i.test(x.trim()));
+  let month=$i('scheduleImportMonth').value;
+  if(periodLine){
+   const m=periodLine.match(/([A-Za-zÁÉÍÓÚáéíóú]+)\s+de\s+(\d{4})/i);
+   if(m){const months={'enero':1,'febrero':2,'marzo':3,'abril':4,'mayo':5,'junio':6,'julio':7,'agosto':8,'septiembre':9,'setiembre':9,'octubre':10,'noviembre':11,'diciembre':12};const n=months[m[1].toLowerCase()];if(n)month=m[2]+'-'+String(n).padStart(2,'0');}
+  }
+  if(month)$i('scheduleImportMonth').value=month;
+  const employees=[];let current=null,inDetail=false;
+  const dayRe=/^\s*(\d{1,2})\s+(DOM|LUN|MAR|MI[ÉE]|JUE|VIE|S[ÁA]B)\s*\|\s*(0018|0552|0302|0210|0138|LIBRE|VAC|ASUETO|[-])\s*\|\s*([^|]+?)\s*\|\s*(\d+)\s*h\s*$/i;
+  for(const line of lines){
+   const em=line.match(/^\s*EMPLEADO\s+\d+\s*:\s*(.+?)\s*$/i);
+   if(em){current={name:em[1].trim(),days:[]};employees.push(current);inDetail=false;continue;}
+   if(current&&/Detalle diario:/i.test(line)){inDetail=true;continue;}
+   if(current&&inDetail){
+    const m=line.match(dayRe);
+    if(m){
+     const day=Number(m[1]),code=m[3].toUpperCase(),label=m[4].trim().toUpperCase();
+     const map={'0018':'06 AM A 02 PM','0552':'06 PM A 06 AM','0302':'10 AM A 06 PM','0210':'08 AM A 04 PM','0138':'07 AM A 03 PM','LIBRE':'LIBRE','VAC':'VACACIONES','ASUETO':'ASUETO','-':'REVISAR'};
+     current.days.push({day,weekday:m[2].toLowerCase(),code:code==='-'?'':code,type:code==='LIBRE'?'LIBRE':code==='VAC'?'VAC':code==='ASUETO'?'ASUETO':code==='-'?'REVISAR':'shift',label:map[code]||label,confidence:1,raw:line});
+    }else if(/^-{10,}$/.test(line.trim())||/OBSERVACI[ÓO]N:/i.test(line)||/^\s*$/.test(line)){inDetail=false;}
+   }
+  }
+  if(!employees.length)throw new Error('No se encontraron bloques EMPLEADO 1:, EMPLEADO 2:, etc. Pega el reporte general completo.');
+  const [y,m]=month.split('-').map(Number),total=new Date(y,m,0).getDate();
+  employees.forEach(emp=>{
+   const byDay=new Map(emp.days.map(d=>[d.day,d]));
+   emp.days=Array.from({length:total},(_,i)=>byDay.get(i+1)||{day:i+1,weekday:['domingo','lunes','martes','miércoles','jueves','viernes','sábado'][new Date(y,m-1,i+1).getDay()],type:'REVISAR',label:'REVISAR',code:''});
+  });
+  return {month,employees};
+ }
+ $i('processScheduleReport').onclick=()=>{
+  try{
+   const raw=$i('scheduleReportInput').value.trim();if(!raw)throw new Error('Primero pega el reporte o carga el archivo TXT.');
+   const data=parseProgramReport(raw);importedScheduleData=data;renderGeminiSchedule(data);
+   const staffByName=new Map(employees.map(e=>[normalizePersonName(e.name),e]));
+   const unmatched=data.employees.filter(e=>!staffByName.has(normalizePersonName(e.name)));
+   const pending=data.employees.reduce((n,e)=>n+e.days.filter(d=>!d.code||d.code==='-'||d.type==='REVISAR').length,0);
+   const all=data.employees.flatMap(e=>e.days);
+   $i('ocrNames').textContent=data.employees.length;$i('ocrDays').textContent=all.length/data.employees.length;
+   $i('ocrShifts').textContent=all.filter(d=>['0018','0552','0302','0210','0138'].includes(d.code)).length;
+   $i('ocrStates').textContent=all.filter(d=>['LIBRE','VAC','ASUETO'].includes(d.code)).length;
+   $i('scheduleImportBadge').textContent='Reporte procesado';$i('scheduleImportBadge').className='rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-bold text-emerald-700';
+   $i('saveImportedSchedules').disabled=unmatched.length>0||pending>0||role!=='admin';
+   $i('scheduleImportStatus').textContent='Reporte procesado: '+data.employees.length+' empleados, '+all.length+' días. '+(unmatched.length?'No coinciden en el personal: '+unmatched.map(e=>e.name).join(', ')+'. ':'')+(pending?pending+' días pendientes de revisión. ':'')+(role!=='admin'?'Solo un administrador puede guardar. ':'')+'No se ha guardado nada todavía.';
+  }catch(err){$i('scheduleImportBadge').textContent='Error';$i('scheduleImportStatus').textContent=err.message;}
+ };
+
+ $i('saveImportedSchedules').onclick=async()=>{
+  if(role!=='admin'||!importedScheduleData)return;
+  const btn=$i('saveImportedSchedules');btn.disabled=true;btn.textContent='Guardando…';
+  let saved=0,skipped=0,failed=0;
+  try{
+   const staffByName=new Map(employees.map(e=>[normalizePersonName(e.name),e]));
+   const [year,month]=importedScheduleData.month.split('-').map(Number);
+   for(const importedEmp of importedScheduleData.employees){
+    const emp=staffByName.get(normalizePersonName(importedEmp.name));
+    if(!emp){failed+=importedEmp.days.length;continue;}
+    for(const day of importedEmp.days){
+     const code=String(day.code||'').toUpperCase(),cfg=scheduleCatalog[code];
+     if(!cfg){skipped++;continue;}
+     const date=`${year}-${String(month).padStart(2,'0')}-${String(day.day).padStart(2,'0')}`;
+     const id=`${date}_${emp.id}`,ref=doc(db,...ROOT,'daily_schedules',id);
+     if(schedules[id]&&!$('replaceImportedSchedules').checked){skipped++;continue;}
+     try{
+      await setDoc(ref,{date,employeeId:emp.id,employeeName:emp.name,kind:cfg.kind,startTime:cfg.startTime,endTime:cfg.endTime,shiftCode:code,scheduledHours:cfg.hours,source:'program_report_import',importedAt:serverTimestamp(),updatedAt:serverTimestamp(),updatedBy:user.uid},{merge:true});
+      saved++;
+     }catch(err){failed++;console.error('No se pudo importar horario',date,emp.name,err);}
+    }
+   }
+   $i('scheduleImportStatus').textContent=`Importación terminada. Guardados: ${saved}. Omitidos (ya existían o pendientes): ${skipped}. Errores: ${failed}.`;
+   $i('scheduleImportBadge').textContent=failed?'Importación parcial':'Guardado completado';
+   $i('scheduleImportBadge').className='rounded-full '+(failed?'bg-amber-100 text-amber-800':'bg-emerald-100 text-emerald-700')+' px-3 py-1 text-[10px] font-bold';
+   if(saved)toast(`${saved} horarios guardados en Firebase`);
+   renderScheduleManager();
+  }catch(err){showFirebaseError(err,'No se pudo completar la importación')}
+  finally{btn.disabled=false;btn.textContent='Guardar horarios en Firebase'}
+ };
+
+})();
 </script>
 </body></html>
