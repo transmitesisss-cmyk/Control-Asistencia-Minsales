@@ -1,0 +1,414 @@
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ==========================================
+    // IDENTIFICACIÓN Y ROLES
+    // ==========================================
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isMinsal() {
+      return signedIn() &&
+        request.auth.uid == 'pv63hlYkYSRmXdM4ei9qgBhdWd83';
+    }
+
+    function isAdmin() {
+      return signedIn() &&
+        request.auth.uid in [
+          'VGqx0YRg33T40eUCDQvfT19X4Bg1',
+          'omz3QCdEMBesfxYjUC53ZwuZBOQ2'
+        ];
+    }
+
+    function isSupervisor() {
+      return signedIn() &&
+        request.auth.uid == 'JsiF4oXezGMRcGzdSNfji3JIBlU2';
+    }
+
+    function isAuthorized() {
+      return isMinsal() || isAdmin() || isSupervisor();
+    }
+
+    // ==========================================
+    // FUNCIONES DE PERSONAL
+    // ==========================================
+
+    function employeePath(employeeId) {
+      return /databases/$(database)/documents/artifacts/mensales-asistencia-app/public/data/mensales_staff/$(employeeId);
+    }
+
+    function employeeExists(employeeId) {
+      return exists(employeePath(employeeId));
+    }
+
+    function employeeIsActive(employeeId) {
+      return employeeExists(employeeId) &&
+        get(employeePath(employeeId)).data.active == true;
+    }
+
+    // ==========================================
+    // VALIDACIÓN DE ASISTENCIA + GPS
+    // ==========================================
+
+    function validAttendance(dateId, isCreate) {
+      return request.resource.data.keys().hasAll([
+        'date',
+        'employeeId',
+        'employeeName',
+        'status',
+        'locked',
+        'createdAt',
+        'updatedAt',
+        'actorUid',
+        'actorRole',
+        'source'
+      ])
+
+      && request.resource.data.keys().hasOnly([
+        'date',
+        'employeeId',
+        'employeeName',
+        'status',
+        'locked',
+        'createdAt',
+        'updatedAt',
+        'actorUid',
+        'actorRole',
+        'source',
+        'geoLat',
+        'geoLng',
+        'geoAccuracy',
+        'geoDistanceMeters',
+        'geoVerifiedAt'
+      ])
+
+      && request.resource.data.date is string
+      && request.resource.data.date.matches(
+        '^20[0-9]{2}-[0-9]{2}-[0-9]{2}$'
+      )
+
+      && request.resource.data.employeeId is string
+      && request.resource.data.employeeName is string
+      && request.resource.data.employeeName.size() > 0
+
+      && request.resource.data.status in ['✓','L','X','I','P']
+      && request.resource.data.locked == true
+
+      && (
+        isCreate
+        ? request.resource.data.createdAt == request.time
+        : request.resource.data.createdAt == resource.data.createdAt
+      )
+
+      && request.resource.data.updatedAt == request.time
+      && request.resource.data.actorUid == request.auth.uid
+
+      && dateId ==
+        request.resource.data.date + '_' +
+        request.resource.data.employeeId
+
+      // GPS obligatorio para MINSAL cuando marca Asistió.
+      && (
+        (
+          isMinsal()
+          && request.resource.data.status == '✓'
+
+          && request.resource.data.keys().hasAll([
+            'geoLat',
+            'geoLng',
+            'geoAccuracy',
+            'geoDistanceMeters',
+            'geoVerifiedAt'
+          ])
+
+          && request.resource.data.geoLat is number
+          && request.resource.data.geoLng is number
+
+          && request.resource.data.geoLat >= -90
+          && request.resource.data.geoLat <= 90
+
+          && request.resource.data.geoLng >= -180
+          && request.resource.data.geoLng <= 180
+
+          && request.resource.data.geoAccuracy is number
+          && request.resource.data.geoAccuracy > 0
+          && request.resource.data.geoAccuracy <= 70
+
+          && request.resource.data.geoDistanceMeters is number
+          && request.resource.data.geoDistanceMeters >= 0
+          && request.resource.data.geoDistanceMeters <= 85
+
+          && request.resource.data.geoVerifiedAt is string
+        )
+
+        ||
+
+        // Las demás marcaciones no deben llevar datos GPS.
+        (
+          !(isMinsal() && request.resource.data.status == '✓')
+
+          && !request.resource.data.keys().hasAny([
+            'geoLat',
+            'geoLng',
+            'geoAccuracy',
+            'geoDistanceMeters',
+            'geoVerifiedAt'
+          ])
+        )
+      );
+    }
+
+    // ==========================================
+    // VALIDACIÓN DE PROGRAMACIÓN MENSUAL
+    // ==========================================
+
+    function validSchedule(scheduleId) {
+      return request.resource.data.keys().hasAll([
+        'date',
+        'employeeId',
+        'employeeName',
+        'kind',
+        'startTime',
+        'endTime',
+        'updatedAt',
+        'updatedBy'
+      ])
+
+      && request.resource.data.keys().hasOnly([
+        'date',
+        'employeeId',
+        'employeeName',
+        'kind',
+        'startTime',
+        'endTime',
+        'updatedAt',
+        'updatedBy',
+        'shiftCode',
+        'scheduledHours',
+        'source',
+        'importedAt'
+      ])
+
+      && request.resource.data.date is string
+      && request.resource.data.date.matches(
+        '^20[0-9]{2}-[0-9]{2}-[0-9]{2}$'
+      )
+
+      && request.resource.data.employeeId is string
+      && request.resource.data.employeeName is string
+      && request.resource.data.employeeName.size() > 0
+
+      && request.resource.data.kind in ['off','shift','vacation','holiday']
+
+      && (
+        (
+          request.resource.data.kind in ['off','vacation','holiday']
+          && request.resource.data.startTime == null
+          && request.resource.data.endTime == null
+        )
+
+        ||
+
+        (
+          request.resource.data.kind == 'shift'
+
+          && request.resource.data.startTime is string
+          && request.resource.data.endTime is string
+
+          && request.resource.data.startTime.matches(
+            '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+          )
+
+          && request.resource.data.endTime.matches(
+            '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+          )
+
+          && request.resource.data.startTime !=
+            request.resource.data.endTime
+        )
+      )
+
+      && request.resource.data.updatedAt == request.time
+      && request.resource.data.updatedBy == request.auth.uid
+
+      && (!('shiftCode' in request.resource.data) || request.resource.data.shiftCode is string)
+      && (!('scheduledHours' in request.resource.data) || request.resource.data.scheduledHours is number)
+      && (!('source' in request.resource.data) || request.resource.data.source == 'program_report_import')
+      && (!('importedAt' in request.resource.data) || request.resource.data.importedAt == request.time)
+
+      && scheduleId ==
+        request.resource.data.date + '_' +
+        request.resource.data.employeeId
+
+      && employeeExists(request.resource.data.employeeId);
+    }
+
+    // ==========================================
+    // PERSONAL
+    // ==========================================
+
+    match /artifacts/mensales-asistencia-app/public/data/mensales_staff/{employeeId} {
+
+      allow read: if isAuthorized();
+
+      allow create: if isAdmin()
+
+        && request.resource.data.keys().hasAll([
+          'name',
+          'active',
+          'createdAt',
+          'updatedAt'
+        ])
+
+        && request.resource.data.keys().hasOnly([
+          'name',
+          'active',
+          'createdAt',
+          'updatedAt'
+        ])
+
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.active == true
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow update: if isAdmin()
+
+        && request.resource.data.keys().hasAll([
+          'name',
+          'active',
+          'createdAt',
+          'updatedAt'
+        ])
+
+        && request.resource.data.keys().hasOnly([
+          'name',
+          'active',
+          'createdAt',
+          'updatedAt'
+        ])
+
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.active is bool
+
+        && request.resource.data.createdAt ==
+          resource.data.createdAt
+
+        && request.resource.data.updatedAt == request.time;
+
+      allow delete: if false;
+    }
+
+    // ==========================================
+    // HORARIOS DIARIOS
+    // ==========================================
+
+    match /artifacts/mensales-asistencia-app/public/data/daily_schedules/{scheduleId} {
+
+      allow read: if isAuthorized();
+
+      // Solo administradores pueden crear o modificar horarios.
+      allow create, update: if isAdmin()
+        && validSchedule(scheduleId);
+
+      // Solo administradores pueden eliminar horarios.
+      allow delete: if isAdmin();
+    }
+
+    // ==========================================
+    // MARCACIONES DE ASISTENCIA
+    // ==========================================
+
+    match /artifacts/mensales-asistencia-app/public/data/daily_attendance/{dateId} {
+
+      allow read: if isAuthorized();
+
+      // MINSAL: marcaciones manuales.
+      allow create: if isMinsal()
+
+        && validAttendance(dateId, true)
+        && employeeIsActive(request.resource.data.employeeId)
+
+        && request.resource.data.status in ['✓','L','I','P']
+        && request.resource.data.actorRole == 'minsal'
+        && request.resource.data.source == 'minsal';
+
+      // MINSAL: recuperación automática del día anterior.
+      // La aplicación limita el proceso al empleado seleccionado en el dispositivo.
+      allow create: if isMinsal()
+        && validAttendance(dateId, true)
+        && employeeIsActive(request.resource.data.employeeId)
+        && request.resource.data.status in ['L','X']
+        && request.resource.data.actorRole == 'minsal'
+        && request.resource.data.source in [
+          'automatic-recovery-off',
+          'automatic-recovery-absence'
+        ];
+
+      // Administradores: correcciones de asistencia.
+      allow create: if isAdmin()
+
+        && validAttendance(dateId, true)
+        && employeeExists(request.resource.data.employeeId)
+
+        && request.resource.data.actorRole == 'admin'
+        && request.resource.data.source == 'admin-correction';
+
+      // Administradores: recuperación automática del día anterior.
+      allow create: if isAdmin()
+        && validAttendance(dateId, true)
+        && employeeIsActive(request.resource.data.employeeId)
+        && request.resource.data.status in ['L','X']
+        && request.resource.data.actorRole == 'admin'
+        && request.resource.data.source in [
+          'automatic-recovery-off',
+          'automatic-recovery-absence'
+        ];
+
+      // Administradores: modificar marcaciones existentes.
+      allow update: if isAdmin()
+
+        && validAttendance(dateId, false)
+
+        && request.resource.data.date == resource.data.date
+        && request.resource.data.employeeId == resource.data.employeeId
+
+        && employeeExists(resource.data.employeeId)
+
+        && request.resource.data.actorRole == 'admin'
+        && request.resource.data.source == 'admin-correction';
+
+      // Supervisor: faltas automáticas.
+      allow create: if isSupervisor()
+
+        && validAttendance(dateId, true)
+        && employeeIsActive(request.resource.data.employeeId)
+
+        && request.resource.data.status in ['L','X']
+        && request.resource.data.actorRole == 'supervisor'
+        && request.resource.data.source in [
+          'automatic-recovery-off',
+          'automatic-recovery-absence',
+          'supervisor-auto-off',
+          'supervisor-auto'
+        ];
+
+      // Solo administradores pueden eliminar marcaciones.
+      allow delete: if isAdmin();
+    }
+
+    // ==========================================
+    // BLOQUEO GENERAL
+    // ==========================================
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

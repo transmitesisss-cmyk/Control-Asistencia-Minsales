@@ -1,0 +1,15 @@
+CONTROL DE ASISTENCIA MENSALES — ACTUALIZACIÓN DE PERMISOS
+
+1. Publica los archivos de esta carpeta en GitHub Pages.
+2. En Firebase Console > Firestore Database > Reglas, reemplaza las reglas actuales por el contenido de firestore.rules y pulsa Publicar.
+3. No pegues firestore.rules dentro de index.html ni sw.js.
+
+Cambios de reglas:
+- Autoriza el cierre automático de LIBRE/FALTA por supervisor y administrador.
+- Autoriza la recuperación del día anterior desde la cuenta MINSAL, limitada por la aplicación al empleado seleccionado en ese dispositivo.
+- Permite guardar horarios shift, off, vacation y holiday.
+- Permite los campos adicionales del importador de reportes: shiftCode, scheduledHours, source e importedAt.
+- Mantiene las lecturas y escrituras restringidas a los UID existentes.
+
+Nota de seguridad:
+La selección del empleado MINSAL se guarda localmente en el dispositivo; las reglas de Firestore no pueden verificar ese localStorage. La cuenta MINSAL autorizada podría técnicamente enviar una solicitud para otro empleado si se manipula el cliente. Para un control estricto por empleado se necesitaría guardar un vínculo UID-empleado en Firestore y validarlo en las reglas.
